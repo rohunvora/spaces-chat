@@ -2,6 +2,8 @@ const express = require('express');
 const WebSocket = require('ws');
 const http = require('http');
 const path = require('path');
+const Database = require('better-sqlite3');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -15,8 +17,41 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 
 const clients = new Set();
-const messageBuffer = [];
-const MAX_BUFFER_SIZE = 200;
+const activeNames = new Set();
+const typingUsers = new Map();
+const TYPING_TIMEOUT = 2000;
+
+// Initialize SQLite database
+const db = new Database('chat.db');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    text TEXT NOT NULL,
+    ts INTEGER NOT NULL
+  )
+`);
+
+// Load recent messages from database
+const getRecentMessages = db.prepare(`
+  SELECT * FROM messages 
+  ORDER BY ts DESC 
+  LIMIT 200
+`).all().reverse();
+
+const insertMessage = db.prepare(`
+  INSERT INTO messages (id, name, text, ts) 
+  VALUES (?, ?, ?, ?)
+`);
+
+const deleteMessage = db.prepare(`
+  DELETE FROM messages WHERE id = ?
+`);
+
+const clearMessages = db.prepare(`
+  DELETE FROM messages
+`);
+
 let messageIdCounter = 1;
 
 const state = {
@@ -25,6 +60,29 @@ const state = {
   emojiOnly: false
 };
 
+// Load word filter configuration
+let filterConfig = { bannedWords: [], bannedPatterns: [] };
+try {
+  const configData = fs.readFileSync('config.json', 'utf8');
+  filterConfig = JSON.parse(configData);
+  console.log(`Loaded ${filterConfig.bannedWords.length} banned words and ${filterConfig.bannedPatterns.length} patterns`);
+} catch (err) {
+  console.log('No config.json found or invalid format, running without word filter');
+}
+
+// Watch for config changes
+if (fs.existsSync('config.json')) {
+  fs.watchFile('config.json', () => {
+    try {
+      const configData = fs.readFileSync('config.json', 'utf8');
+      filterConfig = JSON.parse(configData);
+      console.log('Reloaded word filter config');
+    } catch (err) {
+      console.error('Error reloading config:', err);
+    }
+  });
+}
+
 function isEmojiOnly(text) {
   const emojiRegex = /^[\p{Emoji}\s]+$/u;
   return emojiRegex.test(text);
@@ -32,6 +90,31 @@ function isEmojiOnly(text) {
 
 function stripHtml(text) {
   return text.replace(/<[^>]*>/g, '');
+}
+
+function containsBannedContent(text) {
+  const lowerText = text.toLowerCase();
+  
+  // Check exact banned words
+  for (const word of filterConfig.bannedWords) {
+    if (lowerText.includes(word.toLowerCase())) {
+      return true;
+    }
+  }
+  
+  // Check regex patterns for variations
+  for (const pattern of filterConfig.bannedPatterns) {
+    try {
+      const regex = new RegExp(pattern, 'i');
+      if (regex.test(text)) {
+        return true;
+      }
+    } catch (err) {
+      console.error(`Invalid regex pattern: ${pattern}`);
+    }
+  }
+  
+  return false;
 }
 
 function broadcast(message, exclude = null) {
@@ -43,11 +126,21 @@ function broadcast(message, exclude = null) {
   });
 }
 
-function addMessage(msg) {
-  messageBuffer.push(msg);
-  if (messageBuffer.length > MAX_BUFFER_SIZE) {
-    messageBuffer.shift();
+function isNameTaken(name, excludeClient = null) {
+  for (const client of clients) {
+    if (client !== excludeClient && client.name === name && client.ws.readyState === WebSocket.OPEN) {
+      return true;
+    }
   }
+  return false;
+}
+
+function broadcastTypingStatus() {
+  const typingList = Array.from(typingUsers.keys());
+  broadcast({
+    type: 'typing',
+    users: typingList
+  });
 }
 
 wss.on('connection', (ws) => {
@@ -76,8 +169,25 @@ wss.on('connection', (ws) => {
       
       switch (msg.type) {
         case 'hello':
-          client.name = stripHtml(msg.name || 'Guest').substring(0, 30);
+          const requestedName = stripHtml(msg.name || 'Guest').substring(0, 30);
+          
+          // Check for name collision
+          if (isNameTaken(requestedName, client)) {
+            ws.send(JSON.stringify({
+              type: 'nameError',
+              message: `Name "${requestedName}" is already taken. Please choose another.`
+            }));
+            return;
+          }
+          
+          // Remove old name from active names if changing
+          if (client.name && client.name !== requestedName) {
+            activeNames.delete(client.name);
+          }
+          
+          client.name = requestedName;
           client.isHost = Boolean(msg.host);
+          activeNames.add(client.name);
           
           ws.send(JSON.stringify({
             type: 'system',
@@ -86,7 +196,7 @@ wss.on('connection', (ws) => {
               emojiOnly: state.emojiOnly
             },
             pinned: state.pinned,
-            messages: messageBuffer
+            messages: getRecentMessages
           }));
           break;
           
@@ -105,6 +215,12 @@ wss.on('connection', (ws) => {
           const text = stripHtml(msg.text || '').substring(0, 240);
           
           if (!text) return;
+          
+          // Silent filter - just return without any error message
+          if (containsBannedContent(text)) {
+            console.log(`Filtered message from ${client.name}: "${text}"`);
+            return;
+          }
           
           if (state.emojiOnly && !isEmojiOnly(text)) {
             ws.send(JSON.stringify({
@@ -132,8 +248,34 @@ wss.on('connection', (ws) => {
             ts: now
           };
           
-          addMessage(message);
+          // Save to database
+          insertMessage.run(message.id, message.name, message.text, message.ts);
           broadcast(message);
+          break;
+          
+        case 'typing':
+          if (msg.isTyping) {
+            // Clear existing timeout
+            if (typingUsers.has(client.name)) {
+              clearTimeout(typingUsers.get(client.name));
+            }
+            
+            // Set new timeout
+            const timeout = setTimeout(() => {
+              typingUsers.delete(client.name);
+              broadcastTypingStatus();
+            }, TYPING_TIMEOUT);
+            
+            typingUsers.set(client.name, timeout);
+            broadcastTypingStatus();
+          } else {
+            // User stopped typing
+            if (typingUsers.has(client.name)) {
+              clearTimeout(typingUsers.get(client.name));
+              typingUsers.delete(client.name);
+              broadcastTypingStatus();
+            }
+          }
           break;
           
         case 'setMode':
@@ -165,7 +307,7 @@ wss.on('connection', (ws) => {
         case 'reset':
           if (!client.isHost) return;
           
-          messageBuffer.length = 0;
+          clearMessages.run();
           broadcast({
             type: 'reset'
           });
@@ -174,14 +316,11 @@ wss.on('connection', (ws) => {
         case 'delete':
           if (!client.isHost) return;
           
-          const index = messageBuffer.findIndex(m => m.id === msg.id);
-          if (index !== -1) {
-            messageBuffer.splice(index, 1);
-            broadcast({
-              type: 'delete',
-              id: msg.id
-            });
-          }
+          deleteMessage.run(msg.id);
+          broadcast({
+            type: 'delete',
+            id: msg.id
+          });
           break;
       }
     } catch (err) {
@@ -192,6 +331,16 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     clearInterval(pingInterval);
     clients.delete(client);
+    
+    // Clean up name and typing status
+    if (client.name) {
+      activeNames.delete(client.name);
+      if (typingUsers.has(client.name)) {
+        clearTimeout(typingUsers.get(client.name));
+        typingUsers.delete(client.name);
+        broadcastTypingStatus();
+      }
+    }
   });
   
   ws.on('error', (err) => {

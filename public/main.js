@@ -15,6 +15,8 @@ let currentSlowMode = 0;
 let isEmojiOnly = false;
 let hasScrolledUp = false;
 let hasSetName = false;
+let typingTimeout = null;
+let lastTypingEmit = 0;
 
 const urlParams = new URLSearchParams(window.location.search);
 isHost = urlParams.get('host') === '1';
@@ -43,7 +45,9 @@ const elements = {
   nameDialogInput: document.getElementById('nameDialogInput'),
   saveNameBtn: document.getElementById('saveNameBtn'),
   cancelNameBtn: document.getElementById('cancelNameBtn'),
-  toastContainer: document.getElementById('toastContainer')
+  toastContainer: document.getElementById('toastContainer'),
+  typingIndicator: document.getElementById('typingIndicator'),
+  typingText: document.getElementById('typingText')
 };
 
 if (isHost) {
@@ -87,9 +91,10 @@ function connectWebSocket() {
       elements.userDisplay.textContent = userName;
     }
     
+    // Send the actual userName, not 'Guest'
     ws.send(JSON.stringify({
       type: 'hello',
-      name: userName || 'Guest',
+      name: userName,
       host: isHost
     }));
   };
@@ -168,6 +173,17 @@ function handleMessage(msg) {
     case 'error':
       showToast(msg.message);
       break;
+      
+    case 'nameError':
+      showToast(msg.message);
+      // Show name dialog again
+      elements.nameDialog.showModal();
+      elements.nameDialogInput.focus();
+      break;
+      
+    case 'typing':
+      updateTypingIndicator(msg.users);
+      break;
   }
 }
 
@@ -201,6 +217,43 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function updateTypingIndicator(users) {
+  const otherUsers = users.filter(u => u !== userName);
+  
+  if (otherUsers.length === 0) {
+    elements.typingIndicator.style.display = 'none';
+    return;
+  }
+  
+  let text = '';
+  if (otherUsers.length === 1) {
+    text = `${otherUsers[0]} is typing...`;
+  } else if (otherUsers.length === 2) {
+    text = `${otherUsers[0]} and ${otherUsers[1]} are typing...`;
+  } else {
+    text = `${otherUsers.length} people are typing...`;
+  }
+  
+  elements.typingText.textContent = text;
+  elements.typingIndicator.style.display = 'block';
+}
+
+function emitTyping(isTyping) {
+  const now = Date.now();
+  // Throttle typing emissions to every 500ms
+  if (isTyping && now - lastTypingEmit < 500) {
+    return;
+  }
+  
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: 'typing',
+      isTyping: isTyping
+    }));
+    lastTypingEmit = now;
+  }
+}
+
 function sendMessage() {
   const text = elements.messageInput.value.trim();
   
@@ -208,6 +261,8 @@ function sendMessage() {
   if (!hasSetName && userName.startsWith('Guest-')) {
     elements.nameDialog.showModal();
     elements.nameDialogInput.focus();
+    // Store the message to send after name is set
+    elements.messageInput.setAttribute('data-pending-message', text);
     return;
   }
   
@@ -237,6 +292,12 @@ function sendMessage() {
     }));
     
     elements.messageInput.value = '';
+    
+    // Clear typing indicator
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+      emitTyping(false);
+    }
     updateCharCount();
     
     if (currentSlowMode > 0) {
@@ -265,7 +326,27 @@ function updateCharCount() {
   elements.charCount.className = length > 200 ? 'char-count warning' : 'char-count';
 }
 
-elements.messageInput.addEventListener('input', updateCharCount);
+elements.messageInput.addEventListener('input', (e) => {
+  updateCharCount();
+  
+  // Handle typing indicator
+  if (e.target.value.trim()) {
+    emitTyping(true);
+    
+    // Clear existing timeout
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+    
+    // Set new timeout to stop typing
+    typingTimeout = setTimeout(() => {
+      emitTyping(false);
+    }, 1500);
+  } else if (typingTimeout) {
+    clearTimeout(typingTimeout);
+    emitTyping(false);
+  }
+});
 
 elements.messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -369,6 +450,14 @@ elements.saveNameBtn.addEventListener('click', () => {
         name: userName,
         host: isHost
       }));
+    }
+    
+    // Check if there was a pending message to send
+    const pendingMessage = elements.messageInput.getAttribute('data-pending-message');
+    if (pendingMessage) {
+      elements.messageInput.removeAttribute('data-pending-message');
+      // Send the message after a brief delay to ensure name is registered
+      setTimeout(() => sendMessage(), 100);
     }
   }
   elements.nameDialog.close();

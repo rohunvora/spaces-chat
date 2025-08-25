@@ -1,0 +1,25 @@
+{
+  "bannedWords": [
+    "scammer",
+    "scam",
+    "fraud",
+    "fake",
+    "rugpull",
+    "rug pull",
+    "ponzi",
+    "grift",
+    "shill"
+  ],
+  "bannedPatterns": [
+    "sc[a@4]m+[e3]r*",
+    "fr[a@4]ud",
+    "f[a@4]k[e3]",
+    "rug.*pull",
+    "p[o0]nz[i1]",
+    "gr[i1]ft[e3]r*",
+    "sh[i1]ll+",
+    "s c a m",
+    "f r a u d",
+    "🤡+.*scam"
+  ]
+}

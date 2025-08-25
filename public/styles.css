@@ -112,6 +112,18 @@ header h1 {
   padding: 12px 16px;
 }
 
+.typing-indicator {
+  padding: 8px 16px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-style: italic;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
 @media (min-width: 768px) {
   .message-list {
     height: 60vh;
