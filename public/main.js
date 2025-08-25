@@ -13,11 +13,12 @@ let reconnectTimeout = null;
 let slowModeTimeout = null;
 let currentSlowMode = 0;
 let isEmojiOnly = false;
-let hasScrolledUp = false;
 let hasSetName = false;
 let typingTimeout = null;
 let lastTypingEmit = 0;
 let replyingTo = null;
+let unreadCount = 0;
+let isAtBottom = true;
 
 const urlParams = new URLSearchParams(window.location.search);
 isHost = urlParams.get('host') === '1';
@@ -237,8 +238,58 @@ function addMessageToList(msg) {
   
   elements.messageList.appendChild(messageEl);
   
-  if (!hasScrolledUp) {
+  // Auto-scroll only if user is at bottom
+  if (isAtBottom) {
     elements.messageList.scrollTop = elements.messageList.scrollHeight;
+  } else {
+    // Increment unread count and show banner
+    unreadCount++;
+    showNewMessagesBanner();
+  }
+}
+
+function showNewMessagesBanner() {
+  let banner = document.getElementById('newMessagesBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'newMessagesBanner';
+    banner.className = 'new-messages-banner';
+    banner.innerHTML = `
+      <span id="unreadText"></span>
+      <button id="jumpToBottomBtn">↓</button>
+    `;
+    elements.messageList.parentElement.insertBefore(banner, elements.typingIndicator);
+    
+    document.getElementById('jumpToBottomBtn').addEventListener('click', jumpToBottom);
+  }
+  
+  document.getElementById('unreadText').textContent = 
+    unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`;
+  banner.style.display = 'flex';
+}
+
+function hideNewMessagesBanner() {
+  const banner = document.getElementById('newMessagesBanner');
+  if (banner) {
+    banner.style.display = 'none';
+  }
+  unreadCount = 0;
+}
+
+function jumpToBottom() {
+  elements.messageList.scrollTop = elements.messageList.scrollHeight;
+  hideNewMessagesBanner();
+  isAtBottom = true;
+}
+
+function checkIfAtBottom() {
+  const list = elements.messageList;
+  const threshold = 50; // pixels from bottom to consider "at bottom"
+  const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
+  isAtBottom = distanceFromBottom < threshold;
+  
+  if (isAtBottom) {
+    hideNewMessagesBanner();
   }
 }
 
@@ -465,8 +516,7 @@ elements.messageInput.addEventListener('keydown', (e) => {
 elements.sendBtn.addEventListener('click', sendMessage);
 
 elements.messageList.addEventListener('scroll', () => {
-  const scrollBottom = elements.messageList.scrollHeight - elements.messageList.clientHeight - elements.messageList.scrollTop;
-  hasScrolledUp = scrollBottom > 50;
+  checkIfAtBottom();
 });
 
 elements.messageList.addEventListener('click', (e) => {
