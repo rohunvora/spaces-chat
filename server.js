@@ -27,20 +27,24 @@ db.exec(`
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     text TEXT NOT NULL,
-    ts INTEGER NOT NULL
+    ts INTEGER NOT NULL,
+    reply_to_id TEXT,
+    reply_to_name TEXT,
+    reply_to_text TEXT
   )
 `);
 
 // Prepare statement to get recent messages from database
 const getRecentMessagesStmt = db.prepare(`
-  SELECT * FROM messages 
+  SELECT id, name, text, ts, reply_to_id, reply_to_name, reply_to_text
+  FROM messages 
   ORDER BY ts DESC 
   LIMIT 200
 `);
 
 const insertMessage = db.prepare(`
-  INSERT INTO messages (id, name, text, ts) 
-  VALUES (?, ?, ?, ?)
+  INSERT INTO messages (id, name, text, ts, reply_to_id, reply_to_name, reply_to_text) 
+  VALUES (?, ?, ?, ?, ?, ?, ?)
 `);
 
 const deleteMessage = db.prepare(`
@@ -188,8 +192,26 @@ wss.on('connection', (ws) => {
           client.name = requestedName;
           client.isHost = Boolean(msg.host);
           
-          // Get fresh messages from database
-          const recentMessages = getRecentMessagesStmt.all().reverse();
+          // Get fresh messages from database and format them
+          const recentMessages = getRecentMessagesStmt.all().reverse().map(row => {
+            const msg = {
+              type: 'msg',
+              id: row.id,
+              name: row.name,
+              text: row.text,
+              ts: row.ts
+            };
+            
+            if (row.reply_to_id) {
+              msg.replyTo = {
+                id: row.reply_to_id,
+                name: row.reply_to_name,
+                text: row.reply_to_text
+              };
+            }
+            
+            return msg;
+          });
           
           ws.send(JSON.stringify({
             type: 'system',
@@ -251,8 +273,25 @@ wss.on('connection', (ws) => {
             ts: now
           };
           
-          // Save to database
-          insertMessage.run(message.id, message.name, message.text, message.ts);
+          // Add reply data if present
+          if (msg.replyTo) {
+            message.replyTo = {
+              id: msg.replyTo.id,
+              name: stripHtml(msg.replyTo.name).substring(0, 30),
+              text: stripHtml(msg.replyTo.text).substring(0, 100)
+            };
+          }
+          
+          // Save to database with reply data
+          insertMessage.run(
+            message.id, 
+            message.name, 
+            message.text, 
+            message.ts,
+            message.replyTo?.id || null,
+            message.replyTo?.name || null,
+            message.replyTo?.text || null
+          );
           broadcast(message);
           break;
           
