@@ -122,6 +122,16 @@ header h1 {
   min-height: 32px;
   display: flex;
   align-items: center;
+  animation: fadeIn 150ms linear;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (min-width: 768px) {
@@ -135,6 +145,19 @@ header h1 {
   margin-bottom: 12px;
   position: relative;
   padding-right: 20px;
+  animation: slideIn 200ms linear;
+  transform-origin: left center;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .message-name {
