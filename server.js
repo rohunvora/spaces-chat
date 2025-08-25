@@ -17,7 +17,6 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 
 const clients = new Set();
-const activeNames = new Set();
 const typingUsers = new Map();
 const TYPING_TIMEOUT = 2000;
 
@@ -126,14 +125,6 @@ function broadcast(message, exclude = null) {
   });
 }
 
-function isNameTaken(name, excludeClient = null) {
-  for (const client of clients) {
-    if (client !== excludeClient && client.name === name && client.ws.readyState === WebSocket.OPEN) {
-      return true;
-    }
-  }
-  return false;
-}
 
 function broadcastTypingStatus() {
   const typingList = Array.from(typingUsers.keys());
@@ -191,23 +182,11 @@ wss.on('connection', (ws) => {
         case 'hello':
           const requestedName = stripHtml(msg.name || 'Guest').substring(0, 30);
           
-          // Check for name collision
-          if (isNameTaken(requestedName, client)) {
-            ws.send(JSON.stringify({
-              type: 'nameError',
-              message: `Name "${requestedName}" is already taken. Please choose another.`
-            }));
-            return;
-          }
-          
-          // Remove old name from active names if changing
-          if (client.name && client.name !== requestedName) {
-            activeNames.delete(client.name);
-          }
+          // No name collision check - allow multiple tabs with same name
+          // This is better for personal use where you might have multiple tabs open
           
           client.name = requestedName;
           client.isHost = Boolean(msg.host);
-          activeNames.add(client.name);
           
           ws.send(JSON.stringify({
             type: 'system',
@@ -353,14 +332,11 @@ wss.on('connection', (ws) => {
     clearInterval(pingInterval);
     clients.delete(client);
     
-    // Clean up name and typing status
-    if (client.name) {
-      activeNames.delete(client.name);
-      if (typingUsers.has(client.name)) {
-        clearTimeout(typingUsers.get(client.name));
-        typingUsers.delete(client.name);
-        broadcastTypingStatus();
-      }
+    // Clean up typing status
+    if (client.name && typingUsers.has(client.name)) {
+      clearTimeout(typingUsers.get(client.name));
+      typingUsers.delete(client.name);
+      broadcastTypingStatus();
     }
     
     // Broadcast updated user count

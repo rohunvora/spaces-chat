@@ -104,7 +104,7 @@ function connectWebSocket() {
       elements.userDisplay.textContent = userName;
     }
     
-    // Send the actual userName, not 'Guest'
+    // Send the actual userName
     ws.send(JSON.stringify({
       type: 'hello',
       name: userName,
@@ -189,13 +189,6 @@ function handleMessage(msg) {
       
     case 'error':
       showToast(msg.message);
-      break;
-      
-    case 'nameError':
-      showToast(msg.message);
-      // Show name dialog again
-      elements.nameDialog.showModal();
-      elements.nameDialogInput.focus();
       break;
       
     case 'typing':
