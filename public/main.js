@@ -455,15 +455,6 @@ window.cancelReply = cancelReply;
 function sendMessage() {
   const text = elements.messageInput.value.trim();
   
-  // Prompt for name on first message if still using generated name
-  if (!hasSetName) {
-    elements.nameDialog.showModal();
-    elements.nameDialogInput.focus();
-    // Store the message to send after name is set
-    elements.messageInput.setAttribute('data-pending-message', text);
-    return;
-  }
-  
   if (!text) {
     return;
   }
@@ -726,13 +717,7 @@ elements.saveNameBtn.addEventListener('click', () => {
       }));
     }
     
-    // Check if there was a pending message to send
-    const pendingMessage = elements.messageInput.getAttribute('data-pending-message');
-    if (pendingMessage) {
-      elements.messageInput.removeAttribute('data-pending-message');
-      // Send the message after a brief delay to ensure name is registered
-      setTimeout(() => sendMessage(), 100);
-    }
+    // Removed pending message logic - no longer prompting for name before chatting
   }
   elements.nameDialog.close();
 });
