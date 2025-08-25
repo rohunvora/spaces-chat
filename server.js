@@ -14,6 +14,15 @@ const wss = new WebSocket.Server({
 
 const PORT = process.env.PORT || 3000;
 
+// Force HTTPS in production
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.header('x-forwarded-proto') !== 'https') {
+    res.redirect(`https://${req.header('host')}${req.url}`);
+  } else {
+    next();
+  }
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const clients = new Set();
