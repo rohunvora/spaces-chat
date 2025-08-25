@@ -17,6 +17,7 @@ let hasScrolledUp = false;
 let hasSetName = false;
 let typingTimeout = null;
 let lastTypingEmit = 0;
+let replyingTo = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 isHost = urlParams.get('host') === '1';
@@ -216,6 +217,7 @@ function addMessageToList(msg) {
   messageEl.innerHTML = `
     <span class="message-name" style="color: ${userColor}">${escapeHtml(msg.name)}</span>
     <span class="message-time">${time}</span>
+    <button class="reply-btn" data-id="${msg.id}" data-name="${escapeHtml(msg.name)}" data-text="${escapeHtml(msg.text)}">↵</button>
     ${isHost ? `<button class="delete-btn" data-id="${msg.id}">×</button>` : ''}
     <div class="message-text">${escapeHtml(msg.text)}</div>
   `;
@@ -301,6 +303,39 @@ function emitTyping(isTyping) {
   }
 }
 
+function setReplyingTo(msgId, name, text) {
+  replyingTo = { id: msgId, name: name, text: text };
+  
+  // Create and show reply preview
+  const existingPreview = document.querySelector('.reply-preview');
+  if (existingPreview) {
+    existingPreview.remove();
+  }
+  
+  const previewEl = document.createElement('div');
+  previewEl.className = 'reply-preview';
+  previewEl.innerHTML = `
+    <div class="reply-preview-content">
+      <div class="reply-preview-label">Replying to <span style="color: ${getUserColor(name)}">${escapeHtml(name)}</span></div>
+      <div class="reply-preview-text">${escapeHtml(text.substring(0, 50))}${text.length > 50 ? '...' : ''}</div>
+    </div>
+    <button class="reply-cancel" onclick="cancelReply()">×</button>
+  `;
+  
+  elements.messageInput.parentElement.insertBefore(previewEl, elements.messageInput);
+  elements.messageInput.focus();
+}
+
+function cancelReply() {
+  replyingTo = null;
+  const preview = document.querySelector('.reply-preview');
+  if (preview) {
+    preview.remove();
+  }
+}
+
+window.cancelReply = cancelReply;
+
 function sendMessage() {
   const text = elements.messageInput.value.trim();
   
@@ -333,10 +368,19 @@ function sendMessage() {
   }
   
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
+    const messageData = {
       type: 'msg',
       text: text
-    }));
+    };
+    
+    if (replyingTo) {
+      messageData.replyTo = replyingTo;
+    }
+    
+    ws.send(JSON.stringify(messageData));
+    
+    // Clear reply after sending
+    cancelReply();
     
     elements.messageInput.value = '';
     
@@ -418,6 +462,11 @@ elements.messageList.addEventListener('click', (e) => {
         id: id
       }));
     }
+  } else if (e.target.classList.contains('reply-btn')) {
+    const id = e.target.getAttribute('data-id');
+    const name = e.target.getAttribute('data-name');
+    const text = e.target.getAttribute('data-text');
+    setReplyingTo(id, name, text);
   }
 });
 
