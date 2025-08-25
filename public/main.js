@@ -231,6 +231,7 @@ function addMessageToList(msg) {
   messageEl.innerHTML = `
     <span class="message-name" style="color: ${userColor}">${escapeHtml(msg.name)}</span>
     <span class="message-time">${time}</span>
+    <span class="reply-btn" data-id="${msg.id}">Reply</span>
     ${isHost ? `<button class="delete-btn" data-id="${msg.id}">×</button>` : ''}
     ${replyContent}
     <div class="message-text">${escapeHtml(msg.text)}</div>
@@ -447,10 +448,6 @@ function cancelReply() {
   if (preview) {
     preview.remove();
   }
-  // Remove message highlight
-  document.querySelectorAll('.message.replying-to').forEach(el => {
-    el.classList.remove('replying-to');
-  });
 }
 
 window.cancelReply = cancelReply;
@@ -588,22 +585,60 @@ elements.messageList.addEventListener('click', (e) => {
     return;
   }
   
-  // Click anywhere on message to reply (Twitch-style)
+  // Handle reply button click
+  if (e.target.classList.contains('reply-btn')) {
+    const messageEl = e.target.closest('.message');
+    if (messageEl) {
+      const id = messageEl.getAttribute('data-msg-id');
+      const name = messageEl.dataset.msgName;
+      const text = messageEl.dataset.msgText;
+      setReplyingTo(id, name, text);
+    }
+  }
+});
+
+// Long-press for mobile reply
+let longPressTimer = null;
+let touchStartPos = null;
+
+elements.messageList.addEventListener('touchstart', (e) => {
   const messageEl = e.target.closest('.message');
   if (messageEl && !e.target.classList.contains('delete-btn')) {
-    // Remove previous highlight
-    document.querySelectorAll('.message.replying-to').forEach(el => {
-      el.classList.remove('replying-to');
-    });
-    
-    // Highlight this message
-    messageEl.classList.add('replying-to');
-    
-    const id = messageEl.getAttribute('data-msg-id');
-    const name = messageEl.dataset.msgName;
-    const text = messageEl.dataset.msgText;
-    setReplyingTo(id, name, text);
+    touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    longPressTimer = setTimeout(() => {
+      // Vibrate if supported
+      if (navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+      const id = messageEl.getAttribute('data-msg-id');
+      const name = messageEl.dataset.msgName;
+      const text = messageEl.dataset.msgText;
+      setReplyingTo(id, name, text);
+      longPressTimer = null;
+    }, 500); // 500ms long press
   }
+});
+
+elements.messageList.addEventListener('touchmove', (e) => {
+  if (longPressTimer && touchStartPos) {
+    const moveDistance = Math.sqrt(
+      Math.pow(e.touches[0].clientX - touchStartPos.x, 2) +
+      Math.pow(e.touches[0].clientY - touchStartPos.y, 2)
+    );
+    // Cancel if moved more than 10px
+    if (moveDistance > 10) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+});
+
+elements.messageList.addEventListener('touchend', () => {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+  touchStartPos = null;
 });
 
 if (isHost) {

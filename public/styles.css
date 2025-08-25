@@ -222,20 +222,13 @@ header h1 {
   animation: slideIn 200ms linear;
   transform-origin: left center;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: 8px;
   align-items: baseline;
-  cursor: pointer;
-  transition: background-color 0.15s;
 }
 
 .message:hover {
   background: #f9fafb;
-}
-
-.message.replying-to {
-  background: #eff6ff;
-  outline: 2px solid #3b82f6;
 }
 
 @keyframes slideIn {
@@ -262,12 +255,44 @@ header h1 {
   opacity: 0.7;
 }
 
+.reply-btn {
+  font-size: 0.75rem;
+  color: #6b7280;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  user-select: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* Show reply button on desktop hover */
+@media (hover: hover) {
+  .message:hover .reply-btn {
+    opacity: 0.7;
+  }
+  
+  .reply-btn:hover {
+    opacity: 1 !important;
+    background: #e5e7eb;
+    color: #374151;
+  }
+}
+
+/* Always visible on touch devices with different styling */
+@media (hover: none) {
+  .reply-btn {
+    display: none;
+  }
+}
+
 .message-text {
   word-wrap: break-word;
   color: #374151;
   grid-column: 1 / -1;
   letter-spacing: -0.01em;
   font-size: 0.95rem;
+  margin-top: 2px;
 }
 
 .delete-btn {
