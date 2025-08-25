@@ -47,7 +47,8 @@ const elements = {
   cancelNameBtn: document.getElementById('cancelNameBtn'),
   toastContainer: document.getElementById('toastContainer'),
   typingIndicator: document.getElementById('typingIndicator'),
-  typingText: document.getElementById('typingText')
+  typingText: document.getElementById('typingText'),
+  userCount: document.getElementById('userCount')
 };
 
 if (isHost) {
@@ -150,6 +151,10 @@ function handleMessage(msg) {
       if (msg.messages) {
         msg.messages.forEach(m => addMessageToList(m));
       }
+      
+      if (msg.userCount !== undefined) {
+        elements.userCount.textContent = msg.userCount;
+      }
       break;
       
     case 'msg':
@@ -183,6 +188,10 @@ function handleMessage(msg) {
       
     case 'typing':
       updateTypingIndicator(msg.users);
+      break;
+      
+    case 'userCount':
+      elements.userCount.textContent = msg.count;
       break;
   }
 }

@@ -143,6 +143,23 @@ function broadcastTypingStatus() {
   });
 }
 
+function getActiveUserCount() {
+  let count = 0;
+  for (const client of clients) {
+    if (client.ws.readyState === WebSocket.OPEN) {
+      count++;
+    }
+  }
+  return count;
+}
+
+function broadcastUserCount() {
+  broadcast({
+    type: 'userCount',
+    count: getActiveUserCount()
+  });
+}
+
 wss.on('connection', (ws) => {
   const client = {
     ws,
@@ -196,8 +213,12 @@ wss.on('connection', (ws) => {
               emojiOnly: state.emojiOnly
             },
             pinned: state.pinned,
-            messages: getRecentMessages
+            messages: getRecentMessages,
+            userCount: getActiveUserCount()
           }));
+          
+          // Broadcast updated user count to all
+          broadcastUserCount();
           break;
           
         case 'msg':
@@ -341,6 +362,9 @@ wss.on('connection', (ws) => {
         broadcastTypingStatus();
       }
     }
+    
+    // Broadcast updated user count
+    setTimeout(() => broadcastUserCount(), 100);
   });
   
   ws.on('error', (err) => {
