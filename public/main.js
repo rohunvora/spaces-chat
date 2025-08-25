@@ -214,11 +214,24 @@ function addMessageToList(msg) {
   
   const userColor = getUserColor(msg.name);
   
+  let replyContent = '';
+  if (msg.replyTo) {
+    const replyColor = getUserColor(msg.replyTo.name);
+    replyContent = `
+      <div class="message-reply">
+        <span class="reply-arrow">↳</span>
+        <span class="reply-name" style="color: ${replyColor}">${escapeHtml(msg.replyTo.name)}:</span>
+        <span class="reply-text">${escapeHtml(msg.replyTo.text.substring(0, 50))}${msg.replyTo.text.length > 50 ? '...' : ''}</span>
+      </div>
+    `;
+  }
+  
   messageEl.innerHTML = `
     <span class="message-name" style="color: ${userColor}">${escapeHtml(msg.name)}</span>
     <span class="message-time">${time}</span>
     <button class="reply-btn" data-id="${msg.id}" data-name="${escapeHtml(msg.name)}" data-text="${escapeHtml(msg.text)}">↵</button>
     ${isHost ? `<button class="delete-btn" data-id="${msg.id}">×</button>` : ''}
+    ${replyContent}
     <div class="message-text">${escapeHtml(msg.text)}</div>
   `;
   

@@ -158,12 +158,19 @@
     }
     
     function renderMessages() {
-      messagesEl.innerHTML = messages.map(msg => `
-        <div class="message">
-          <span class="message-name" style="color: ${getUserColor(msg.name)}">${escapeHtml(msg.name)}:</span>
-          <span class="message-text">${escapeHtml(msg.text)}</span>
-        </div>
-      `).join('');
+      messagesEl.innerHTML = messages.map(msg => {
+        let replyContent = '';
+        if (msg.replyTo) {
+          replyContent = `<div style="font-size: 0.8em; opacity: 0.7; margin-bottom: 2px;">↳ ${escapeHtml(msg.replyTo.name)}: ${escapeHtml(msg.replyTo.text.substring(0, 30))}...</div>`;
+        }
+        return `
+          <div class="message">
+            ${replyContent}
+            <span class="message-name" style="color: ${getUserColor(msg.name)}">${escapeHtml(msg.name)}:</span>
+            <span class="message-text">${escapeHtml(msg.text)}</span>
+          </div>
+        `;
+      }).join('');
     }
     
     function escapeHtml(text) {
