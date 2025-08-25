@@ -20,6 +20,11 @@ let replyingTo = null;
 let unreadCount = 0;
 let isAtBottom = true;
 
+// W spam confetti tracking
+let recentWMessages = [];
+const W_THRESHOLD = 5;
+const W_TIME_WINDOW = 3000; // 3 seconds
+
 const urlParams = new URLSearchParams(window.location.search);
 isHost = urlParams.get('host') === '1';
 
@@ -174,6 +179,7 @@ function handleMessage(msg) {
       
     case 'msg':
       addMessageToList(msg);
+      checkForWSpam(msg);
       break;
       
     case 'pin':
@@ -742,5 +748,108 @@ document.addEventListener('keydown', (e) => {
     elements.messageInput.focus();
   }
 });
+
+// Confetti animation functions
+function checkForWSpam(msg) {
+  // Check if message is just "W" (case insensitive, allow some whitespace)
+  const isW = /^\s*w+\s*$/i.test(msg.text);
+  
+  if (isW) {
+    const now = Date.now();
+    
+    // Add to recent W messages
+    recentWMessages.push({
+      name: msg.name,
+      time: now
+    });
+    
+    // Remove old messages outside time window
+    recentWMessages = recentWMessages.filter(m => now - m.time < W_TIME_WINDOW);
+    
+    // Get unique users who sent W
+    const uniqueUsers = new Set(recentWMessages.map(m => m.name));
+    
+    // Trigger confetti if threshold met
+    if (uniqueUsers.size >= W_THRESHOLD) {
+      triggerConfetti();
+      // Clear array to prevent multiple triggers
+      recentWMessages = [];
+    }
+  }
+}
+
+function triggerConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  // Set canvas size
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  const particles = [];
+  const particleCount = 150;
+  const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', 
+                  '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50',
+                  '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800'];
+  
+  // Create particles
+  for (let i = 0; i < particleCount; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: canvas.height + 10,
+      vx: (Math.random() - 0.5) * 10,
+      vy: -Math.random() * 15 - 10,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: Math.random() * 4 + 2,
+      gravity: 0.3,
+      opacity: 1,
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 10
+    });
+  }
+  
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    let activeParticles = 0;
+    
+    particles.forEach(particle => {
+      if (particle.opacity > 0) {
+        activeParticles++;
+        
+        // Update physics
+        particle.vy += particle.gravity;
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.rotation += particle.rotationSpeed;
+        
+        // Fade out
+        if (particle.y > canvas.height * 0.3) {
+          particle.opacity -= 0.02;
+        }
+        
+        // Draw particle
+        ctx.save();
+        ctx.globalAlpha = particle.opacity;
+        ctx.translate(particle.x, particle.y);
+        ctx.rotate(particle.rotation * Math.PI / 180);
+        ctx.fillStyle = particle.color;
+        ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+        ctx.restore();
+      }
+    });
+    
+    if (activeParticles > 0) {
+      requestAnimationFrame(animate);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  
+  animate();
+  
+  // Play a subtle sound if possible (optional enhancement)
+  showToast('🎉 W SPAM DETECTED! 🎉', 2000);
+}
 
 connectWebSocket();
