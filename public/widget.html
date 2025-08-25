@@ -160,7 +160,7 @@
     function renderMessages() {
       messagesEl.innerHTML = messages.map(msg => `
         <div class="message">
-          <span class="message-name">${escapeHtml(msg.name)}:</span>
+          <span class="message-name" style="color: ${getUserColor(msg.name)}">${escapeHtml(msg.name)}:</span>
           <span class="message-text">${escapeHtml(msg.text)}</span>
         </div>
       `).join('');
@@ -170,6 +170,23 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+    
+    function getUserColor(name) {
+      const colors = [
+        '#e11d48', '#dc2626', '#ea580c', '#ca8a04',
+        '#16a34a', '#059669', '#0891b2', '#2563eb',
+        '#7c3aed', '#c026d3', '#db2777', '#0f766e',
+        '#7c2d12', '#1e40af', '#6b21a8'
+      ];
+      
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+        hash = ((hash << 5) - hash) + name.charCodeAt(i);
+        hash = hash & hash;
+      }
+      
+      return colors[Math.abs(hash) % colors.length];
     }
     
     connectWebSocket();

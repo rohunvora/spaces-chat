@@ -211,8 +211,10 @@ function addMessageToList(msg) {
     minute: '2-digit' 
   });
   
+  const userColor = getUserColor(msg.name);
+  
   messageEl.innerHTML = `
-    <span class="message-name">${escapeHtml(msg.name)}</span>
+    <span class="message-name" style="color: ${userColor}">${escapeHtml(msg.name)}</span>
     <span class="message-time">${time}</span>
     ${isHost ? `<button class="delete-btn" data-id="${msg.id}">×</button>` : ''}
     <div class="message-text">${escapeHtml(msg.text)}</div>
@@ -229,6 +231,37 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function getUserColor(name) {
+  // Generate consistent color from username
+  // Using a set of readable colors that work on white background
+  const colors = [
+    '#e11d48', // rose-600
+    '#dc2626', // red-600
+    '#ea580c', // orange-600
+    '#ca8a04', // yellow-600
+    '#16a34a', // green-600
+    '#059669', // emerald-600
+    '#0891b2', // cyan-600
+    '#2563eb', // blue-600
+    '#7c3aed', // violet-600
+    '#c026d3', // fuchsia-600
+    '#db2777', // pink-600
+    '#0f766e', // teal-700
+    '#7c2d12', // orange-900
+    '#1e40af', // blue-800
+    '#6b21a8', // purple-800
+  ];
+  
+  // Simple hash function to get consistent index
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash) + name.charCodeAt(i);
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  
+  return colors[Math.abs(hash) % colors.length];
 }
 
 function updateTypingIndicator(users) {
