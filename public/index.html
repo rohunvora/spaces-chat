@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spaces Chat</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Spaces Chat</h1>
+      <span id="status" class="status">● LIVE</span>
+      <button id="rulesBtn" class="rules-btn">Rules</button>
+    </header>
+
+    <div id="pinnedMessage" class="pinned-message" style="display: none;">
+      <span class="pinned-label">📌</span>
+      <span id="pinnedText"></span>
+    </div>
+
+    <div id="reconnectBanner" class="reconnect-banner" style="display: none;">
+      Reconnecting...
+    </div>
+
+    <div id="messageList" class="message-list"></div>
+
+    <div class="composer">
+      <div class="input-row">
+        <input type="text" id="nameInput" placeholder="Your name" maxlength="30" class="name-input">
+      </div>
+      <div class="input-row">
+        <textarea id="messageInput" placeholder="Type a message..." maxlength="240" class="message-input"></textarea>
+        <span id="charCount" class="char-count">0/240</span>
+      </div>
+      <div class="input-row">
+        <button id="sendBtn" class="send-btn">Send</button>
+      </div>
+    </div>
+
+    <div id="hostBar" class="host-bar" style="display: none;">
+      <div class="host-controls">
+        <label>
+          Slow mode:
+          <input type="range" id="slowRange" min="0" max="5" value="0" step="1">
+          <span id="slowValue">0s</span>
+        </label>
+        <label>
+          <input type="checkbox" id="emojiOnlyCheck">
+          Emoji-only
+        </label>
+        <button id="pinBtn" class="host-btn">Pin Message</button>
+        <button id="resetBtn" class="host-btn">Reset Chat</button>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="rulesDialog" class="rules-dialog">
+    <h2>Chat Rules</h2>
+    <ul>
+      <li>Be respectful to all participants</li>
+      <li>Maximum message length: 240 characters</li>
+      <li>No links allowed</li>
+      <li>Use Shift+Enter for new lines</li>
+      <li>Host may enable slow mode or emoji-only mode</li>
+      <li>Messages are not saved - they disappear on refresh</li>
+    </ul>
+    <button id="closeRulesBtn">Close</button>
+  </dialog>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="main.js"></script>
+</body>
+</html>

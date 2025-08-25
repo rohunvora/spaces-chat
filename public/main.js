@@ -1,0 +1,340 @@
+let ws = null;
+let isHost = false;
+let userName = '';
+let reconnectAttempts = 0;
+let reconnectTimeout = null;
+let slowModeTimeout = null;
+let currentSlowMode = 0;
+let isEmojiOnly = false;
+let hasScrolledUp = false;
+
+const urlParams = new URLSearchParams(window.location.search);
+isHost = urlParams.get('host') === '1';
+
+const elements = {
+  status: document.getElementById('status'),
+  reconnectBanner: document.getElementById('reconnectBanner'),
+  messageList: document.getElementById('messageList'),
+  nameInput: document.getElementById('nameInput'),
+  messageInput: document.getElementById('messageInput'),
+  sendBtn: document.getElementById('sendBtn'),
+  charCount: document.getElementById('charCount'),
+  hostBar: document.getElementById('hostBar'),
+  slowRange: document.getElementById('slowRange'),
+  slowValue: document.getElementById('slowValue'),
+  emojiOnlyCheck: document.getElementById('emojiOnlyCheck'),
+  pinBtn: document.getElementById('pinBtn'),
+  resetBtn: document.getElementById('resetBtn'),
+  pinnedMessage: document.getElementById('pinnedMessage'),
+  pinnedText: document.getElementById('pinnedText'),
+  rulesBtn: document.getElementById('rulesBtn'),
+  rulesDialog: document.getElementById('rulesDialog'),
+  closeRulesBtn: document.getElementById('closeRulesBtn'),
+  toastContainer: document.getElementById('toastContainer')
+};
+
+if (isHost) {
+  elements.hostBar.style.display = 'block';
+}
+
+function showToast(message, duration = 3000) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  elements.toastContainer.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add('fade-out');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+function connectWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  
+  ws = new WebSocket(wsUrl);
+  
+  ws.onopen = () => {
+    console.log('WebSocket connected');
+    reconnectAttempts = 0;
+    elements.status.textContent = '● LIVE';
+    elements.status.className = 'status live';
+    elements.reconnectBanner.style.display = 'none';
+    
+    const savedName = localStorage.getItem('chatName');
+    if (savedName) {
+      userName = savedName;
+      elements.nameInput.value = savedName;
+    }
+    
+    ws.send(JSON.stringify({
+      type: 'hello',
+      name: userName || 'Guest',
+      host: isHost
+    }));
+  };
+  
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      handleMessage(msg);
+    } catch (err) {
+      console.error('Message parse error:', err);
+    }
+  };
+  
+  ws.onclose = () => {
+    console.log('WebSocket closed');
+    elements.status.textContent = '● OFFLINE';
+    elements.status.className = 'status offline';
+    elements.reconnectBanner.style.display = 'block';
+    
+    clearTimeout(reconnectTimeout);
+    const delay = Math.min(2000 * Math.pow(1.5, reconnectAttempts), 10000);
+    reconnectAttempts++;
+    
+    reconnectTimeout = setTimeout(() => {
+      connectWebSocket();
+    }, delay);
+  };
+  
+  ws.onerror = (err) => {
+    console.error('WebSocket error:', err);
+  };
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'system':
+      if (msg.mode) {
+        currentSlowMode = msg.mode.slow;
+        isEmojiOnly = msg.mode.emojiOnly;
+        
+        if (isHost) {
+          elements.slowRange.value = currentSlowMode;
+          elements.slowValue.textContent = `${currentSlowMode}s`;
+          elements.emojiOnlyCheck.checked = isEmojiOnly;
+        }
+      }
+      
+      if (msg.pinned) {
+        elements.pinnedMessage.style.display = msg.pinned ? 'block' : 'none';
+        elements.pinnedText.textContent = msg.pinned;
+      }
+      
+      if (msg.messages) {
+        msg.messages.forEach(m => addMessageToList(m));
+      }
+      break;
+      
+    case 'msg':
+      addMessageToList(msg);
+      break;
+      
+    case 'pin':
+      elements.pinnedMessage.style.display = msg.text ? 'block' : 'none';
+      elements.pinnedText.textContent = msg.text;
+      break;
+      
+    case 'reset':
+      elements.messageList.innerHTML = '';
+      break;
+      
+    case 'delete':
+      const msgEl = document.querySelector(`[data-msg-id="${msg.id}"]`);
+      if (msgEl) msgEl.remove();
+      break;
+      
+    case 'error':
+      showToast(msg.message);
+      break;
+  }
+}
+
+function addMessageToList(msg) {
+  const messageEl = document.createElement('div');
+  messageEl.className = 'message';
+  messageEl.setAttribute('data-msg-id', msg.id);
+  
+  const time = new Date(msg.ts).toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  
+  messageEl.innerHTML = `
+    <span class="message-name">${escapeHtml(msg.name)}</span>
+    <span class="message-time">${time}</span>
+    ${isHost ? `<button class="delete-btn" data-id="${msg.id}">×</button>` : ''}
+    <div class="message-text">${escapeHtml(msg.text)}</div>
+  `;
+  
+  elements.messageList.appendChild(messageEl);
+  
+  if (!hasScrolledUp) {
+    elements.messageList.scrollTop = elements.messageList.scrollHeight;
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function sendMessage() {
+  const name = elements.nameInput.value.trim();
+  const text = elements.messageInput.value.trim();
+  
+  if (!name) {
+    showToast('Please enter your name');
+    elements.nameInput.focus();
+    return;
+  }
+  
+  if (!text) {
+    return;
+  }
+  
+  if (text.length > 240) {
+    showToast('Message too long (max 240 characters)');
+    return;
+  }
+  
+  if (/https?:\/\//i.test(text)) {
+    showToast('Links are not allowed');
+    return;
+  }
+  
+  if (isEmojiOnly && !/^[\p{Emoji}\s]+$/u.test(text)) {
+    showToast('Emoji-only mode is enabled');
+    return;
+  }
+  
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: 'msg',
+      text: text
+    }));
+    
+    if (name !== userName) {
+      userName = name;
+      localStorage.setItem('chatName', name);
+      ws.send(JSON.stringify({
+        type: 'hello',
+        name: name,
+        host: isHost
+      }));
+    }
+    
+    elements.messageInput.value = '';
+    updateCharCount();
+    
+    if (currentSlowMode > 0) {
+      elements.sendBtn.disabled = true;
+      let remaining = currentSlowMode;
+      
+      slowModeTimeout = setInterval(() => {
+        remaining--;
+        if (remaining > 0) {
+          elements.sendBtn.textContent = `Wait ${remaining}s`;
+        } else {
+          clearInterval(slowModeTimeout);
+          elements.sendBtn.disabled = false;
+          elements.sendBtn.textContent = 'Send';
+        }
+      }, 1000);
+    }
+  } else {
+    showToast('Not connected to server');
+  }
+}
+
+function updateCharCount() {
+  const length = elements.messageInput.value.length;
+  elements.charCount.textContent = `${length}/240`;
+  elements.charCount.className = length > 200 ? 'char-count warning' : 'char-count';
+}
+
+elements.messageInput.addEventListener('input', updateCharCount);
+
+elements.messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+elements.sendBtn.addEventListener('click', sendMessage);
+
+elements.messageList.addEventListener('scroll', () => {
+  const scrollBottom = elements.messageList.scrollHeight - elements.messageList.clientHeight - elements.messageList.scrollTop;
+  hasScrolledUp = scrollBottom > 50;
+});
+
+elements.messageList.addEventListener('click', (e) => {
+  if (e.target.classList.contains('delete-btn') && isHost) {
+    const id = e.target.getAttribute('data-id');
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'delete',
+        id: id
+      }));
+    }
+  }
+});
+
+if (isHost) {
+  elements.slowRange.addEventListener('input', () => {
+    const value = elements.slowRange.value;
+    elements.slowValue.textContent = `${value}s`;
+    
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'setMode',
+        slow: parseInt(value),
+        emojiOnly: elements.emojiOnlyCheck.checked
+      }));
+    }
+  });
+  
+  elements.emojiOnlyCheck.addEventListener('change', () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'setMode',
+        slow: parseInt(elements.slowRange.value),
+        emojiOnly: elements.emojiOnlyCheck.checked
+      }));
+    }
+  });
+  
+  elements.pinBtn.addEventListener('click', () => {
+    const text = prompt('Enter message to pin (leave empty to unpin):');
+    if (text !== null && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'pin',
+        text: text
+      }));
+    }
+  });
+  
+  elements.resetBtn.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all messages?')) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'reset'
+        }));
+      }
+    }
+  });
+}
+
+elements.rulesBtn.addEventListener('click', () => {
+  elements.rulesDialog.showModal();
+});
+
+elements.closeRulesBtn.addEventListener('click', () => {
+  elements.rulesDialog.close();
+});
+
+connectWebSocket();
