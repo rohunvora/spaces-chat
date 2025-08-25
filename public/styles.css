@@ -5,11 +5,13 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   max-width: 720px;
   margin: 0 auto;
   padding: 12px;
   background: #f5f5f5;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .container {
@@ -31,6 +33,8 @@ header {
 header h1 {
   font-size: 1.25rem;
   margin-right: auto;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .user-count {
@@ -126,13 +130,16 @@ header h1 {
   padding: 8px 16px;
   background: #f9fafb;
   border-top: 1px solid #e5e7eb;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   color: #6b7280;
-  font-style: italic;
+  font-style: normal;
   min-height: 32px;
   display: flex;
   align-items: center;
   animation: fadeIn 150ms linear;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
 }
 
 @keyframes fadeIn {
@@ -157,6 +164,10 @@ header h1 {
   padding-right: 20px;
   animation: slideIn 200ms linear;
   transform-origin: left center;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: baseline;
 }
 
 @keyframes slideIn {
@@ -172,19 +183,24 @@ header h1 {
 
 .message-name {
   font-weight: 600;
-  margin-right: 8px;
   color: #1f2937;
+  letter-spacing: -0.01em;
 }
 
 .message-time {
   font-size: 0.75rem;
   color: #6b7280;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  letter-spacing: 0.02em;
+  opacity: 0.7;
 }
 
 .message-text {
-  margin-top: 2px;
   word-wrap: break-word;
   color: #374151;
+  grid-column: 1 / -1;
+  letter-spacing: -0.01em;
+  font-size: 0.95rem;
 }
 
 .delete-btn {
@@ -220,8 +236,11 @@ header h1 {
   padding: 10px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   min-height: 44px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
 }
 
 .message-input {
