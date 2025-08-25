@@ -47,6 +47,7 @@ const elements = {
   nameDialogInput: document.getElementById('nameDialogInput'),
   saveNameBtn: document.getElementById('saveNameBtn'),
   cancelNameBtn: document.getElementById('cancelNameBtn'),
+  regenerateNameBtn: document.getElementById('regenerateNameBtn'),
   toastContainer: document.getElementById('toastContainer'),
   typingIndicator: document.getElementById('typingIndicator'),
   typingText: document.getElementById('typingText'),
@@ -64,8 +65,8 @@ if (savedName) {
   hasSetName = true;
   elements.userDisplay.textContent = `Chatting as: ${savedName}`;
 } else {
-  // Generate guest name
-  userName = `Guest-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+  // Generate Twitch-style name instead of Guest-XXXX
+  userName = generateTwitchStyleName();
   elements.userDisplay.textContent = userName;
 }
 
@@ -101,8 +102,8 @@ function connectWebSocket() {
       hasSetName = true;
       elements.userDisplay.textContent = `Chatting as: ${userName}`;
     } else if (!userName) {
-      // Only generate guest name if we don't have one yet
-      userName = `Guest-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+      // Generate Twitch-style name instead of Guest-XXXX
+      userName = generateTwitchStyleName();
       elements.userDisplay.textContent = userName;
     }
     
@@ -299,6 +300,53 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function generateTwitchStyleName() {
+  // Adjectives that work well with alliteration
+  const adjectives = [
+    'Amazing', 'Bouncy', 'Brave', 'Bright', 'Bubbly',
+    'Chill', 'Clever', 'Cosmic', 'Cozy', 'Crispy',
+    'Daring', 'Dizzy', 'Dreamy', 'Dynamic',
+    'Electric', 'Epic', 'Fancy', 'Fearless', 'Fluffy', 'Funky',
+    'Gentle', 'Giggly', 'Glowing', 'Golden', 'Groovy',
+    'Happy', 'Hasty', 'Heroic', 'Hidden', 'Hyper',
+    'Jazzy', 'Jolly', 'Jumpy', 'Lucky', 'Lunar',
+    'Magic', 'Mega', 'Mighty', 'Mystic',
+    'Nifty', 'Ninja', 'Noble',
+    'Peppy', 'Prancing', 'Prime', 'Punchy',
+    'Quick', 'Quiet', 'Quirky',
+    'Rapid', 'Royal', 'Rusty',
+    'Sassy', 'Shiny', 'Silly', 'Silver', 'Sleepy', 'Smooth', 'Sneaky', 'Snappy', 'Speedy', 'Spicy', 'Sporty', 'Stealth', 'Sunny', 'Super', 'Swift',
+    'Tasty', 'Turbo', 'Twisty',
+    'Ultra', 'Vivid', 'Wacky', 'Wild', 'Zesty', 'Zippy'
+  ];
+  
+  // Nouns that are fun and memorable
+  const nouns = [
+    'Alpaca', 'Avocado', 'Bacon', 'Banana', 'Bear', 'Bee', 'Biscuit', 'Blaze', 'Burger', 'Burrito',
+    'Cactus', 'Cake', 'Camel', 'Carrot', 'Cat', 'Cheese', 'Chicken', 'Chip', 'Cloud', 'Cookie', 'Crab', 'Cupcake',
+    'Dino', 'Donut', 'Dragon', 'Duck',
+    'Eagle', 'Egg', 'Elephant',
+    'Falcon', 'Fish', 'Fox', 'Frog',
+    'Gecko', 'Giraffe', 'Goat', 'Goose', 'Grape', 'Gummy',
+    'Hamster', 'Hawk', 'Hippo', 'Horse',
+    'Jaguar', 'Jelly', 'Jellyfish',
+    'Koala', 'Kiwi', 'Llama', 'Lobster', 'Lion',
+    'Mango', 'Monkey', 'Moose', 'Muffin', 'Mushroom',
+    'Nacho', 'Noodle', 'Nugget',
+    'Octopus', 'Otter', 'Owl', 'Panda', 'Pancake', 'Parrot', 'Pasta', 'Peach', 'Peacock', 'Peanut', 'Penguin', 'Pepper', 'Phoenix', 'Pickle', 'Pizza', 'Potato', 'Pretzel', 'Puffin', 'Pumpkin',
+    'Quail', 'Quesadilla',
+    'Rabbit', 'Raccoon', 'Raven', 'Robot',
+    'Salmon', 'Shark', 'Shrimp', 'Sloth', 'Snail', 'Snake', 'Socks', 'Soup', 'Spark', 'Spider', 'Squid', 'Squirrel', 'Star', 'Sushi',
+    'Taco', 'Tiger', 'Toast', 'Tomato', 'Tornado', 'Turtle',
+    'Unicorn', 'Waffle', 'Walrus', 'Whale', 'Wolf', 'Wombat', 'Yak', 'Yeti', 'Zebra', 'Zombie'
+  ];
+  
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  
+  return adj + noun;
+}
+
 function getUserColor(name) {
   // Generate consistent color from username
   // Using a set of readable colors that work on white background
@@ -403,8 +451,8 @@ window.cancelReply = cancelReply;
 function sendMessage() {
   const text = elements.messageInput.value.trim();
   
-  // Prompt for name on first message if still using guest name
-  if (!hasSetName && userName.startsWith('Guest-')) {
+  // Prompt for name on first message if still using generated name
+  if (!hasSetName) {
     elements.nameDialog.showModal();
     elements.nameDialogInput.focus();
     // Store the message to send after name is set
@@ -593,6 +641,13 @@ elements.closeRulesBtn.addEventListener('click', () => {
 elements.changeNameBtn.addEventListener('click', () => {
   elements.nameDialogInput.value = hasSetName ? userName : '';
   elements.nameDialog.showModal();
+  elements.nameDialogInput.focus();
+  elements.nameDialogInput.select();
+});
+
+elements.regenerateNameBtn.addEventListener('click', () => {
+  const newName = generateTwitchStyleName();
+  elements.nameDialogInput.value = newName;
   elements.nameDialogInput.focus();
   elements.nameDialogInput.select();
 });
