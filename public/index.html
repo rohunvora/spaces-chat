@@ -10,6 +10,10 @@
   <div class="container">
     <header>
       <h1>Spaces Chat</h1>
+      <div class="user-profile">
+        <span id="userDisplay">Guest</span>
+        <button id="changeNameBtn" class="change-name-btn">(change)</button>
+      </div>
       <span id="status" class="status">● LIVE</span>
       <button id="rulesBtn" class="rules-btn">Rules</button>
     </header>
@@ -26,9 +30,6 @@
     <div id="messageList" class="message-list"></div>
 
     <div class="composer">
-      <div class="input-row">
-        <input type="text" id="nameInput" placeholder="Your name" maxlength="30" class="name-input">
-      </div>
       <div class="input-row">
         <textarea id="messageInput" placeholder="Type a message..." maxlength="240" class="message-input"></textarea>
         <span id="charCount" class="char-count">0/240</span>
@@ -66,6 +67,15 @@
       <li>Messages are not saved - they disappear on refresh</li>
     </ul>
     <button id="closeRulesBtn">Close</button>
+  </dialog>
+
+  <dialog id="nameDialog" class="name-dialog">
+    <h2>Set Your Name</h2>
+    <input type="text" id="nameDialogInput" placeholder="Enter your name" maxlength="30" class="name-dialog-input">
+    <div class="dialog-buttons">
+      <button id="saveNameBtn">Save</button>
+      <button id="cancelNameBtn">Cancel</button>
+    </div>
   </dialog>
 
   <div id="toastContainer" class="toast-container"></div>

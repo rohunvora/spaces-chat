@@ -1,3 +1,10 @@
+// Username improvement: Moved username to header for better UX
+// Previously, the name input was in the composer area which made it:
+// 1. Easy to accidentally change while typing messages
+// 2. Cluttered the message composition area
+// 3. Unclear when the name was actually being used
+// Now users see "Chatting as: [Name]" in the header with clear change option
+
 let ws = null;
 let isHost = false;
 let userName = '';
@@ -7,6 +14,7 @@ let slowModeTimeout = null;
 let currentSlowMode = 0;
 let isEmojiOnly = false;
 let hasScrolledUp = false;
+let hasSetName = false;
 
 const urlParams = new URLSearchParams(window.location.search);
 isHost = urlParams.get('host') === '1';
@@ -15,7 +23,8 @@ const elements = {
   status: document.getElementById('status'),
   reconnectBanner: document.getElementById('reconnectBanner'),
   messageList: document.getElementById('messageList'),
-  nameInput: document.getElementById('nameInput'),
+  userDisplay: document.getElementById('userDisplay'),
+  changeNameBtn: document.getElementById('changeNameBtn'),
   messageInput: document.getElementById('messageInput'),
   sendBtn: document.getElementById('sendBtn'),
   charCount: document.getElementById('charCount'),
@@ -30,6 +39,10 @@ const elements = {
   rulesBtn: document.getElementById('rulesBtn'),
   rulesDialog: document.getElementById('rulesDialog'),
   closeRulesBtn: document.getElementById('closeRulesBtn'),
+  nameDialog: document.getElementById('nameDialog'),
+  nameDialogInput: document.getElementById('nameDialogInput'),
+  saveNameBtn: document.getElementById('saveNameBtn'),
+  cancelNameBtn: document.getElementById('cancelNameBtn'),
   toastContainer: document.getElementById('toastContainer')
 };
 
@@ -62,10 +75,16 @@ function connectWebSocket() {
     elements.status.className = 'status live';
     elements.reconnectBanner.style.display = 'none';
     
+    // Load saved name or generate a guest name
     const savedName = localStorage.getItem('chatName');
     if (savedName) {
       userName = savedName;
-      elements.nameInput.value = savedName;
+      hasSetName = true;
+      elements.userDisplay.textContent = `Chatting as: ${userName}`;
+    } else {
+      // Generate random guest name for better identity
+      userName = `Guest-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+      elements.userDisplay.textContent = userName;
     }
     
     ws.send(JSON.stringify({
@@ -183,12 +202,12 @@ function escapeHtml(text) {
 }
 
 function sendMessage() {
-  const name = elements.nameInput.value.trim();
   const text = elements.messageInput.value.trim();
   
-  if (!name) {
-    showToast('Please enter your name');
-    elements.nameInput.focus();
+  // Prompt for name on first message if still using guest name
+  if (!hasSetName && userName.startsWith('Guest-')) {
+    elements.nameDialog.showModal();
+    elements.nameDialogInput.focus();
     return;
   }
   
@@ -216,16 +235,6 @@ function sendMessage() {
       type: 'msg',
       text: text
     }));
-    
-    if (name !== userName) {
-      userName = name;
-      localStorage.setItem('chatName', name);
-      ws.send(JSON.stringify({
-        type: 'hello',
-        name: name,
-        host: isHost
-      }));
-    }
     
     elements.messageInput.value = '';
     updateCharCount();
@@ -335,6 +344,46 @@ elements.rulesBtn.addEventListener('click', () => {
 
 elements.closeRulesBtn.addEventListener('click', () => {
   elements.rulesDialog.close();
+});
+
+// Name change functionality
+elements.changeNameBtn.addEventListener('click', () => {
+  elements.nameDialogInput.value = hasSetName ? userName : '';
+  elements.nameDialog.showModal();
+  elements.nameDialogInput.focus();
+  elements.nameDialogInput.select();
+});
+
+elements.saveNameBtn.addEventListener('click', () => {
+  const newName = elements.nameDialogInput.value.trim();
+  if (newName && newName !== userName) {
+    userName = newName;
+    hasSetName = true;
+    localStorage.setItem('chatName', userName);
+    elements.userDisplay.textContent = `Chatting as: ${userName}`;
+    
+    // Update server with new name
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'hello',
+        name: userName,
+        host: isHost
+      }));
+    }
+  }
+  elements.nameDialog.close();
+});
+
+elements.cancelNameBtn.addEventListener('click', () => {
+  elements.nameDialog.close();
+});
+
+// Allow Enter to save name in dialog
+elements.nameDialogInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    elements.saveNameBtn.click();
+  }
 });
 
 connectWebSocket();
