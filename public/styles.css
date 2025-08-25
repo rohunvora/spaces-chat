@@ -214,13 +214,28 @@ header h1 {
 .message {
   margin-bottom: 12px;
   position: relative;
+  padding: 8px;
   padding-right: 20px;
+  margin-left: -8px;
+  margin-right: -8px;
+  border-radius: 4px;
   animation: slideIn 200ms linear;
   transform-origin: left center;
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 8px;
   align-items: baseline;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.message:hover {
+  background: #f9fafb;
+}
+
+.message.replying-to {
+  background: #eff6ff;
+  outline: 2px solid #3b82f6;
 }
 
 @keyframes slideIn {
@@ -269,38 +284,20 @@ header h1 {
   transition: opacity 0.2s;
 }
 
-.reply-btn {
-  position: absolute;
-  right: 24px;
-  top: 0;
-  background: none;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  font-size: 0.875rem;
-  padding: 2px 6px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.reply-btn:hover {
-  color: #2563eb;
-}
-
-.message:hover .delete-btn,
-.message:hover .reply-btn {
+.message:hover .delete-btn {
   opacity: 1;
 }
 
 .reply-preview {
-  background: #f3f4f6;
-  border-left: 3px solid #2563eb;
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
   padding: 8px 12px;
   margin-bottom: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   animation: slideIn 150ms linear;
+  border-radius: 4px;
 }
 
 .reply-preview-content {

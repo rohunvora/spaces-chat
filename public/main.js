@@ -231,11 +231,14 @@ function addMessageToList(msg) {
   messageEl.innerHTML = `
     <span class="message-name" style="color: ${userColor}">${escapeHtml(msg.name)}</span>
     <span class="message-time">${time}</span>
-    <button class="reply-btn" data-id="${msg.id}" data-name="${escapeHtml(msg.name)}" data-text="${escapeHtml(msg.text)}">↵</button>
     ${isHost ? `<button class="delete-btn" data-id="${msg.id}">×</button>` : ''}
     ${replyContent}
     <div class="message-text">${escapeHtml(msg.text)}</div>
   `;
+  
+  // Store message data for click handling
+  messageEl.dataset.msgName = msg.name;
+  messageEl.dataset.msgText = msg.text;
   
   elements.messageList.appendChild(messageEl);
   
@@ -444,6 +447,10 @@ function cancelReply() {
   if (preview) {
     preview.remove();
   }
+  // Remove message highlight
+  document.querySelectorAll('.message.replying-to').forEach(el => {
+    el.classList.remove('replying-to');
+  });
 }
 
 window.cancelReply = cancelReply;
@@ -568,7 +575,9 @@ elements.messageList.addEventListener('scroll', () => {
 });
 
 elements.messageList.addEventListener('click', (e) => {
+  // Handle delete button
   if (e.target.classList.contains('delete-btn') && isHost) {
+    e.stopPropagation();
     const id = e.target.getAttribute('data-id');
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
@@ -576,10 +585,23 @@ elements.messageList.addEventListener('click', (e) => {
         id: id
       }));
     }
-  } else if (e.target.classList.contains('reply-btn')) {
-    const id = e.target.getAttribute('data-id');
-    const name = e.target.getAttribute('data-name');
-    const text = e.target.getAttribute('data-text');
+    return;
+  }
+  
+  // Click anywhere on message to reply (Twitch-style)
+  const messageEl = e.target.closest('.message');
+  if (messageEl && !e.target.classList.contains('delete-btn')) {
+    // Remove previous highlight
+    document.querySelectorAll('.message.replying-to').forEach(el => {
+      el.classList.remove('replying-to');
+    });
+    
+    // Highlight this message
+    messageEl.classList.add('replying-to');
+    
+    const id = messageEl.getAttribute('data-msg-id');
+    const name = messageEl.dataset.msgName;
+    const text = messageEl.dataset.msgText;
     setReplyingTo(id, name, text);
   }
 });
