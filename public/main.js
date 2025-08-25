@@ -456,6 +456,9 @@ elements.messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
+  } else if (e.key === 'Escape' && replyingTo) {
+    e.preventDefault();
+    cancelReply();
   }
 });
 
@@ -581,6 +584,15 @@ elements.nameDialogInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
     elements.saveNameBtn.click();
+  }
+});
+
+// Global keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Focus input with "/" key (when not already typing)
+  if (e.key === '/' && document.activeElement !== elements.messageInput) {
+    e.preventDefault();
+    elements.messageInput.focus();
   }
 });
 
