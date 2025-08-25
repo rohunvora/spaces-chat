@@ -31,12 +31,12 @@ db.exec(`
   )
 `);
 
-// Load recent messages from database
-const getRecentMessages = db.prepare(`
+// Prepare statement to get recent messages from database
+const getRecentMessagesStmt = db.prepare(`
   SELECT * FROM messages 
   ORDER BY ts DESC 
   LIMIT 200
-`).all().reverse();
+`);
 
 const insertMessage = db.prepare(`
   INSERT INTO messages (id, name, text, ts) 
@@ -188,6 +188,9 @@ wss.on('connection', (ws) => {
           client.name = requestedName;
           client.isHost = Boolean(msg.host);
           
+          // Get fresh messages from database
+          const recentMessages = getRecentMessagesStmt.all().reverse();
+          
           ws.send(JSON.stringify({
             type: 'system',
             mode: {
@@ -195,7 +198,7 @@ wss.on('connection', (ws) => {
               emojiOnly: state.emojiOnly
             },
             pinned: state.pinned,
-            messages: getRecentMessages,
+            messages: recentMessages,
             userCount: getActiveUserCount()
           }));
           break;
