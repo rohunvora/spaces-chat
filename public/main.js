@@ -55,6 +55,18 @@ if (isHost) {
   elements.hostBar.style.display = 'block';
 }
 
+// Initialize username on page load
+const savedName = localStorage.getItem('chatName');
+if (savedName) {
+  userName = savedName;
+  hasSetName = true;
+  elements.userDisplay.textContent = `Chatting as: ${savedName}`;
+} else {
+  // Generate guest name
+  userName = `Guest-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+  elements.userDisplay.textContent = userName;
+}
+
 function showToast(message, duration = 3000) {
   const toast = document.createElement('div');
   toast.className = 'toast';
@@ -80,14 +92,14 @@ function connectWebSocket() {
     elements.status.className = 'status live';
     elements.reconnectBanner.style.display = 'none';
     
-    // Load saved name or generate a guest name
+    // Load saved name on every reconnect or generate a guest name
     const savedName = localStorage.getItem('chatName');
     if (savedName) {
       userName = savedName;
       hasSetName = true;
       elements.userDisplay.textContent = `Chatting as: ${userName}`;
-    } else {
-      // Generate random guest name for better identity
+    } else if (!userName) {
+      // Only generate guest name if we don't have one yet
       userName = `Guest-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
       elements.userDisplay.textContent = userName;
     }

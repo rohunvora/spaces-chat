@@ -170,6 +170,9 @@ wss.on('connection', (ws) => {
   
   clients.add(client);
   
+  // Immediately broadcast updated user count when someone connects
+  broadcastUserCount();
+  
   const pingInterval = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) {
       ws.ping();
@@ -216,9 +219,6 @@ wss.on('connection', (ws) => {
             messages: getRecentMessages,
             userCount: getActiveUserCount()
           }));
-          
-          // Broadcast updated user count to all
-          broadcastUserCount();
           break;
           
         case 'msg':
