@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Widget</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+    }
+    
+    #messages {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    #messages.direction-up {
+      flex-direction: column-reverse;
+      justify-content: flex-start;
+    }
+    
+    #messages.direction-down {
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    
+    .message {
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      max-width: 400px;
+      animation: fadeSlideIn 300ms linear;
+      word-wrap: break-word;
+    }
+    
+    .message-name {
+      font-weight: 600;
+      color: #10b981;
+      margin-right: 8px;
+    }
+    
+    .message-text {
+      display: inline;
+    }
+    
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Chromakey-friendly background options */
+    body.chromakey-green {
+      background: #00ff00;
+    }
+    
+    body.chromakey-blue {
+      background: #0000ff;
+    }
+    
+    body.chromakey-magenta {
+      background: #ff00ff;
+    }
+  </style>
+</head>
+<body>
+  <div id="messages"></div>
+  
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const direction = params.get('direction') || 'up';
+    const maxMessages = parseInt(params.get('max')) || 20;
+    const chromakey = params.get('chromakey');
+    
+    const messagesEl = document.getElementById('messages');
+    messagesEl.className = `direction-${direction}`;
+    
+    if (chromakey) {
+      document.body.className = `chromakey-${chromakey}`;
+    }
+    
+    let messages = [];
+    let ws = null;
+    
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        ws.send(JSON.stringify({
+          type: 'hello',
+          name: 'Widget',
+          host: false
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          handleMessage(msg);
+        } catch (err) {
+          console.error('Parse error:', err);
+        }
+      };
+      
+      ws.onclose = () => {
+        setTimeout(connectWebSocket, 2000);
+      };
+    }
+    
+    function handleMessage(msg) {
+      switch (msg.type) {
+        case 'system':
+          if (msg.messages) {
+            messages = msg.messages.slice(-maxMessages);
+            renderMessages();
+          }
+          break;
+          
+        case 'msg':
+          messages.push(msg);
+          if (messages.length > maxMessages) {
+            messages.shift();
+          }
+          renderMessages();
+          break;
+          
+        case 'delete':
+          messages = messages.filter(m => m.id !== msg.id);
+          renderMessages();
+          break;
+          
+        case 'reset':
+          messages = [];
+          renderMessages();
+          break;
+      }
+    }
+    
+    function renderMessages() {
+      messagesEl.innerHTML = messages.map(msg => `
+        <div class="message">
+          <span class="message-name">${escapeHtml(msg.name)}:</span>
+          <span class="message-text">${escapeHtml(msg.text)}</span>
+        </div>
+      `).join('');
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    connectWebSocket();
+  </script>
+</body>
+</html>
