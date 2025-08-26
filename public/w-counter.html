@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W Counter Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .counter-container {
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .counter-label {
+            font-size: 24px;
+            font-weight: 600;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .counter {
+            font-size: 72px;
+            font-weight: bold;
+            color: #10b981;
+            text-shadow: 
+                0 0 10px rgba(16, 185, 129, 0.5),
+                0 0 20px rgba(16, 185, 129, 0.3),
+                2px 2px 4px rgba(0, 0, 0, 0.8);
+            animation: pulse 2s infinite;
+            transition: all 0.3s ease;
+        }
+
+        .counter.celebrating {
+            animation: celebrate 0.5s ease;
+            color: #fbbf24;
+            text-shadow: 
+                0 0 20px rgba(251, 191, 36, 0.8),
+                0 0 40px rgba(251, 191, 36, 0.5),
+                3px 3px 6px rgba(0, 0, 0, 0.9);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes celebrate {
+            0% {
+                transform: scale(1) rotate(0deg);
+            }
+            25% {
+                transform: scale(1.3) rotate(5deg);
+            }
+            50% {
+                transform: scale(1.5) rotate(-5deg);
+            }
+            75% {
+                transform: scale(1.3) rotate(5deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        .paused {
+            opacity: 0.5;
+        }
+
+        .paused .counter-label::after {
+            content: " (PAUSED)";
+            color: #f59e0b;
+            font-size: 16px;
+        }
+
+        /* Confetti animation */
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 1000;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #f0f;
+            animation: confetti-fall 3s linear;
+        }
+
+        @keyframes confetti-fall {
+            from {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="counter-container" id="counterContainer">
+        <div class="counter-label">W COUNT</div>
+        <div class="counter" id="counter">0</div>
+    </div>
+    <div class="confetti-container" id="confettiContainer"></div>
+
+    <script>
+        let ws = null;
+        let currentCount = 0;
+        let isPaused = false;
+        let lastCelebration = 0;
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                console.log('W Counter connected to WebSocket');
+                // Request initial state
+                ws.send(JSON.stringify({
+                    type: 'hello',
+                    name: 'WCounterWidget'
+                }));
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data);
+                } catch (err) {
+                    console.error('Failed to parse message:', err);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected, reconnecting...');
+                setTimeout(connectWebSocket, 2000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'updateCount':
+                    updateCounter(data.count);
+                    break;
+                
+                case 'celebration':
+                    triggerCelebration();
+                    break;
+                
+                case 'paused':
+                    setPaused(data.paused);
+                    break;
+                
+                case 'system':
+                    // Initial load - get count from API
+                    fetchCount();
+                    break;
+            }
+        }
+
+        async function fetchCount() {
+            try {
+                const response = await fetch('/api/count');
+                const data = await response.json();
+                updateCounter(data.count);
+                setPaused(data.paused);
+            } catch (err) {
+                console.error('Failed to fetch count:', err);
+            }
+        }
+
+        function updateCounter(count) {
+            currentCount = count;
+            const counterEl = document.getElementById('counter');
+            counterEl.textContent = count;
+
+            // Check for milestone celebrations
+            if (count > 0 && count % 100 === 0 && count !== lastCelebration) {
+                lastCelebration = count;
+                triggerCelebration();
+            }
+        }
+
+        function setPaused(paused) {
+            isPaused = paused;
+            const container = document.getElementById('counterContainer');
+            if (paused) {
+                container.classList.add('paused');
+            } else {
+                container.classList.remove('paused');
+            }
+        }
+
+        function triggerCelebration() {
+            const counterEl = document.getElementById('counter');
+            counterEl.classList.add('celebrating');
+            
+            // Create confetti
+            createConfetti();
+            
+            setTimeout(() => {
+                counterEl.classList.remove('celebrating');
+            }, 500);
+        }
+
+        function createConfetti() {
+            const container = document.getElementById('confettiContainer');
+            container.innerHTML = '';
+            
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffa500', '#ff69b4'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                container.appendChild(confetti);
+            }
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 4000);
+        }
+
+        // Initialize
+        connectWebSocket();
+        
+        // Fetch count every 5 seconds as backup
+        setInterval(fetchCount, 5000);
+    </script>
+</body>
+</html>
