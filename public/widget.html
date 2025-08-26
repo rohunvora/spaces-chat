@@ -18,12 +18,54 @@
     }
     
     #messages {
-      padding: 10px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       height: 100vh;
       overflow: hidden;
+      position: relative;
+    }
+    
+    /* Fade gradient for overflow */
+    #messages::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: linear-gradient(to bottom, #00ff00, transparent);
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    #messages::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: linear-gradient(to top, #00ff00, transparent);
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    /* Adjust gradient color based on chromakey */
+    body.chromakey-blue #messages::before,
+    body.chromakey-blue #messages::after {
+      background: linear-gradient(to bottom, #0000ff, transparent);
+    }
+    
+    body.chromakey-magenta #messages::before,
+    body.chromakey-magenta #messages::after {
+      background: linear-gradient(to bottom, #ff00ff, transparent);
+    }
+    
+    body.chromakey-none #messages::before,
+    body.chromakey-none #messages::after {
+      display: none;
     }
     
     #messages.direction-up {
@@ -37,38 +79,47 @@
     }
     
     .message {
-      background: rgba(0, 0, 0, 0.85);
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.85));
       color: white;
-      padding: 12px 16px;
-      border-radius: 12px;
-      max-width: 500px;
-      animation: fadeSlideIn 300ms linear;
+      padding: 14px 18px;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 650px;
+      animation: slideIn 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
       word-wrap: break-word;
-      font-size: 18px; /* Increased from default */
-      line-height: 1.4;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      font-size: 20px;
+      line-height: 1.45;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      border-left: 3px solid rgba(16, 185, 129, 0.8);
+      transition: opacity 300ms ease-out, transform 300ms ease-out;
+    }
+    
+    .message.fade-out {
+      opacity: 0;
+      transform: translateX(-20px);
     }
     
     .message-name {
       font-weight: 700;
-      color: #10b981;
       margin-right: 8px;
-      font-size: 19px;
+      font-size: 21px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     }
     
     .message-text {
       display: inline;
-      font-size: 18px;
+      font-size: 20px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
     
-    @keyframes fadeSlideIn {
+    @keyframes slideIn {
       from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateX(-30px) scale(0.95);
       }
       to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateX(0) scale(1);
       }
     }
     

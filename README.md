@@ -23,8 +23,15 @@ Visit `http://localhost:3000`
 
 Add to OBS as a Browser Source:
 ```
-https://your-site.com/widget.html?direction=up&max=20&chromakey=green
+https://your-site.com/widget.html?direction=up&max=25&chromakey=green
 ```
+
+**OBS Settings (Industry Standard):**
+- Width: `700`
+- Height: `800`
+- FPS: `30`
+- Add Chroma Key filter → Green (#00FF00)
+- Position: Bottom corner of stream
 
 ## Host mode
 
