@@ -391,9 +391,20 @@
                 <h3 style="margin-bottom: 10px;">Bulk Edit</h3>
                 <div class="info-text">Edit all words at once (one per line):</div>
                 <textarea id="bulkWords" placeholder="Enter words, one per line..."></textarea>
-                <button class="btn-save" onclick="saveBulkWords()" style="margin-top: 10px; width: 100%;">
-                    💾 Save All Changes
-                </button>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn-save" onclick="saveBulkWords()" style="flex: 1;">
+                        💾 Save All Changes
+                    </button>
+                    <select id="presetSelect" style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                        <option value="">Load Preset...</option>
+                        <option value="mild">Mild (Scams only)</option>
+                        <option value="standard">Standard (Common slurs)</option>
+                        <option value="strict">Strict (All profanity)</option>
+                    </select>
+                    <button onclick="loadPreset()" style="padding: 12px 24px; background: #6366f1; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                        Load
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -731,6 +742,42 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        async function loadPreset() {
+            const select = document.getElementById('presetSelect');
+            const preset = select.value;
+            
+            if (!preset) {
+                showModMessage('Please select a preset', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/moderation-presets.json');
+                const presets = await response.json();
+                
+                if (presets[preset]) {
+                    const presetWords = presets[preset].words;
+                    
+                    // Merge with existing words (no duplicates)
+                    const merged = [...new Set([...bannedWords, ...presetWords])];
+                    bannedWords = merged;
+                    
+                    renderWordList();
+                    updateBulkEdit();
+                    showModMessage(`Loaded ${presetWords.length} words from ${preset} preset`, 'success');
+                    
+                    // Reset select
+                    select.value = '';
+                    
+                    // Auto-save
+                    await saveWords();
+                }
+            } catch (err) {
+                showModMessage('Failed to load preset', 'error');
+                console.error('Preset load failed:', err);
+            }
         }
     </script>
 </body>

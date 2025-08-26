@@ -31,6 +31,7 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname))); // Serve root files like moderation-presets.json
 
 const clients = new Set();
 const typingUsers = new Map();
