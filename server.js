@@ -411,6 +411,46 @@ app.get('/api/count', (req, res) => {
   res.json({ count: wCounter, paused: isPaused });
 });
 
+// Moderation API endpoints
+app.get('/api/moderation/words', (req, res) => {
+  // Check admin key
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  res.json({ 
+    bannedWords: filterConfig.bannedWords,
+    bannedPatterns: filterConfig.bannedPatterns 
+  });
+});
+
+app.post('/api/moderation/words', (req, res) => {
+  // Check admin key
+  if (!ADMIN_KEY || req.body.key !== ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { bannedWords, bannedPatterns } = req.body;
+
+  // Update in memory
+  filterConfig.bannedWords = bannedWords || filterConfig.bannedWords;
+  filterConfig.bannedPatterns = bannedPatterns || filterConfig.bannedPatterns;
+
+  // Save to config.json
+  try {
+    fs.writeFileSync('config.json', JSON.stringify(filterConfig, null, 2));
+    console.log(`Updated filter: ${filterConfig.bannedWords.length} banned words`);
+    res.json({ 
+      success: true, 
+      message: 'Word filter updated',
+      wordCount: filterConfig.bannedWords.length 
+    });
+  } catch (err) {
+    console.error('Failed to save config:', err);
+    res.status(500).json({ error: 'Failed to save configuration' });
+  }
+});
+
 app.post('/api/admin', (req, res) => {
   // Check admin key
   if (!ADMIN_KEY || req.body.key !== ADMIN_KEY) {

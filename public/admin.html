@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>W Counter Admin</title>
+    <title>Admin Panel - Frank's Spaces</title>
     <style>
         * {
             margin: 0;
@@ -24,16 +24,62 @@
         .container {
             background: white;
             border-radius: 20px;
-            padding: 30px;
-            max-width: 500px;
+            padding: 0;
+            max-width: 600px;
             width: 100%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f3f4f6;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #6b7280;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            margin-bottom: -2px;
+        }
+
+        .tab:hover:not(.active) {
+            background: #e5e7eb;
+        }
+
+        .tab-content {
+            padding: 30px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         h1 {
             color: #333;
             margin-bottom: 10px;
             text-align: center;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
         }
 
         .status {
@@ -102,6 +148,14 @@
             background: linear-gradient(135deg, #5a67d8 0%, #6b3aa0 100%);
         }
 
+        .btn-save {
+            background: #667eea;
+        }
+
+        .btn-save:hover {
+            background: #5a67d8;
+        }
+
         .manual-controls {
             display: flex;
             gap: 10px;
@@ -117,7 +171,7 @@
 
         .manual-controls input {
             width: 100px;
-            padding: 12foolpx;
+            padding: 12px;
             font-size: 18px;
             text-align: center;
             border: 2px solid #e5e7eb;
@@ -183,6 +237,107 @@
             margin-bottom: 20px;
         }
 
+        /* Moderation styles */
+        .word-list-container {
+            margin: 20px 0;
+        }
+
+        .word-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .word-input {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        .btn-add {
+            background: #10b981;
+            padding: 12px 24px;
+            font-size: 16px;
+        }
+
+        .btn-add:hover {
+            background: #059669;
+        }
+
+        .word-list {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .word-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .word-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .word-text {
+            font-size: 16px;
+            color: #374151;
+            font-family: monospace;
+        }
+
+        .btn-remove {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-remove:hover {
+            background: #dc2626;
+        }
+
+        .word-count {
+            text-align: center;
+            color: #6b7280;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .bulk-edit {
+            margin-top: 20px;
+        }
+
+        .bulk-edit textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            font-size: 14px;
+            font-family: monospace;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            resize: vertical;
+        }
+
+        .info-text {
+            color: #6b7280;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+
         @media (max-width: 600px) {
             .count-display {
                 font-size: 36px;
@@ -191,6 +346,11 @@
             button {
                 padding: 16px;
                 font-size: 16px;
+            }
+
+            .tab {
+                font-size: 14px;
+                padding: 15px 10px;
             }
         }
     </style>
@@ -203,35 +363,72 @@
     </div>
 
     <div id="adminPanel" class="container" style="display: none;">
-        <h1>W Counter Admin</h1>
-        
-        <div class="status">
-            <span class="status-indicator"></span>
-            <span id="statusText">Connected</span>
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('counter')">W Counter</button>
+            <button class="tab" onclick="switchTab('moderation')">Moderation</button>
         </div>
 
-        <div id="message"></div>
-
-        <div class="count-display" id="currentCount">0</div>
-
-        <div class="controls">
-            <button class="btn-pause" id="pauseBtn" onclick="togglePause()">
-                ⏸️ Pause Counter
-            </button>
-
-            <button class="btn-celebrate" onclick="triggerCelebration()">
-                🎉 Trigger Celebration
-            </button>
-
-            <div class="manual-controls">
-                <button onclick="adjustCount(-1)">−</button>
-                <input type="number" id="countInput" value="0" onchange="setCount(this.value)">
-                <button onclick="adjustCount(1)">+</button>
+        <!-- W Counter Tab -->
+        <div id="counter-tab" class="tab-content active">
+            <h2>W Counter Controls</h2>
+            
+            <div class="status">
+                <span class="status-indicator"></span>
+                <span id="statusText">Connected</span>
             </div>
 
-            <button class="btn-reset" onclick="resetCounter()">
-                🗑️ Reset to Zero
-            </button>
+            <div id="message"></div>
+
+            <div class="count-display" id="currentCount">0</div>
+
+            <div class="controls">
+                <button class="btn-pause" id="pauseBtn" onclick="togglePause()">
+                    ⏸️ Pause Counter
+                </button>
+
+                <button class="btn-celebrate" onclick="triggerCelebration()">
+                    🎉 Trigger Celebration
+                </button>
+
+                <div class="manual-controls">
+                    <button onclick="adjustCount(-1)">−</button>
+                    <input type="number" id="countInput" value="0" onchange="setCount(this.value)">
+                    <button onclick="adjustCount(1)">+</button>
+                </div>
+
+                <button class="btn-reset" onclick="resetCounter()">
+                    🗑️ Reset to Zero
+                </button>
+            </div>
+        </div>
+
+        <!-- Moderation Tab -->
+        <div id="moderation-tab" class="tab-content">
+            <h2>Banned Words</h2>
+            
+            <div id="modMessage"></div>
+
+            <div class="word-input-group">
+                <input type="text" id="newWord" class="word-input" placeholder="Add a word to ban..." onkeypress="if(event.key==='Enter') addWord()">
+                <button class="btn-add" onclick="addWord()">Add Word</button>
+            </div>
+
+            <div class="word-list-container">
+                <div class="info-text">Words that will be silently filtered from chat:</div>
+                <div class="word-list" id="wordList">
+                    <!-- Words will be loaded here -->
+                </div>
+                <div class="word-count" id="wordCount">0 banned words</div>
+            </div>
+
+            <div class="bulk-edit">
+                <h3 style="margin-bottom: 10px;">Bulk Edit</h3>
+                <div class="info-text">Edit all words at once (one per line):</div>
+                <textarea id="bulkWords" placeholder="Enter words, one per line..."></textarea>
+                <button class="btn-save" onclick="saveBulkWords()" style="margin-top: 10px; width: 100%;">
+                    💾 Save All Changes
+                </button>
+            </div>
         </div>
     </div>
 
@@ -252,6 +449,7 @@
         let isPaused = false;
         let currentCount = 0;
         let ws = null;
+        let bannedWords = [];
 
         function initAdmin() {
             // Connect to WebSocket for real-time updates
@@ -260,13 +458,26 @@
             // Get initial count
             fetchCurrentCount();
             
+            // Load banned words
+            loadBannedWords();
+            
             // Update count every 2 seconds as backup
             setInterval(fetchCurrentCount, 2000);
         }
 
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`${tab}-tab`).classList.add('active');
+        }
+
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}`);
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
             
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
@@ -354,6 +565,16 @@
             }, 3000);
         }
 
+        function showModMessage(text, type) {
+            const messageEl = document.getElementById('modMessage');
+            messageEl.className = type;
+            messageEl.textContent = text;
+            setTimeout(() => {
+                messageEl.textContent = '';
+                messageEl.className = '';
+            }, 3000);
+        }
+
         function resetCounter() {
             if (confirm('Are you sure you want to reset the counter to 0?')) {
                 adminAction('reset');
@@ -399,6 +620,112 @@
             if (!isNaN(newCount) && newCount >= 0) {
                 adminAction('set', newCount);
             }
+        }
+
+        // Moderation functions
+        async function loadBannedWords() {
+            try {
+                const key = localStorage.getItem('adminKey');
+                const response = await fetch(`/api/moderation/words?key=${key}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    bannedWords = data.bannedWords || [];
+                    renderWordList();
+                    updateBulkEdit();
+                }
+            } catch (err) {
+                console.error('Failed to load banned words:', err);
+            }
+        }
+
+        function renderWordList() {
+            const listEl = document.getElementById('wordList');
+            const countEl = document.getElementById('wordCount');
+            
+            if (bannedWords.length === 0) {
+                listEl.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No banned words yet</div>';
+            } else {
+                listEl.innerHTML = bannedWords.map((word, index) => `
+                    <div class="word-item">
+                        <span class="word-text">${escapeHtml(word)}</span>
+                        <button class="btn-remove" onclick="removeWord(${index})">Remove</button>
+                    </div>
+                `).join('');
+            }
+            
+            countEl.textContent = `${bannedWords.length} banned word${bannedWords.length !== 1 ? 's' : ''}`;
+        }
+
+        function updateBulkEdit() {
+            document.getElementById('bulkWords').value = bannedWords.join('\n');
+        }
+
+        async function addWord() {
+            const input = document.getElementById('newWord');
+            const word = input.value.trim().toLowerCase();
+            
+            if (!word) return;
+            
+            if (bannedWords.includes(word)) {
+                showModMessage('Word already in list', 'error');
+                return;
+            }
+            
+            bannedWords.push(word);
+            input.value = '';
+            
+            await saveWords();
+            renderWordList();
+            updateBulkEdit();
+        }
+
+        async function removeWord(index) {
+            bannedWords.splice(index, 1);
+            await saveWords();
+            renderWordList();
+            updateBulkEdit();
+        }
+
+        async function saveBulkWords() {
+            const textarea = document.getElementById('bulkWords');
+            const words = textarea.value
+                .split('\n')
+                .map(w => w.trim().toLowerCase())
+                .filter(w => w.length > 0);
+            
+            // Remove duplicates
+            bannedWords = [...new Set(words)];
+            
+            await saveWords();
+            renderWordList();
+            showModMessage('Word list updated!', 'success');
+        }
+
+        async function saveWords() {
+            try {
+                const key = localStorage.getItem('adminKey');
+                const response = await fetch('/api/moderation/words', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, bannedWords })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to save');
+                }
+                
+                showModMessage('Changes saved!', 'success');
+            } catch (err) {
+                showModMessage('Failed to save changes', 'error');
+                console.error('Save failed:', err);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     </script>
 </body>
