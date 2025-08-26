@@ -5,4 +5,4 @@ node_modules/
 package-lock.json
 chat.db
 chat.db-wal
-chat.db-shm
+chat.db-shm.env

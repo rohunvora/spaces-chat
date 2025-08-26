@@ -4,6 +4,7 @@ const http = require('http');
 const path = require('path');
 const Database = require('better-sqlite3');
 const fs = require('fs');
+require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
@@ -13,6 +14,11 @@ const wss = new WebSocket.Server({
 });
 
 const PORT = process.env.PORT || 3000;
+const ADMIN_KEY = process.env.ADMIN_KEY || null;
+
+// W counter state
+let wCounter = 0;
+let isPaused = false;
 
 // Force HTTPS in production
 app.use((req, res, next) => {
@@ -23,6 +29,7 @@ app.use((req, res, next) => {
   }
 });
 
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const clients = new Set();
@@ -399,6 +406,78 @@ wss.on('connection', (ws) => {
   });
 });
 
+// Admin API endpoints
+app.get('/api/count', (req, res) => {
+  res.json({ count: wCounter, paused: isPaused });
+});
+
+app.post('/api/admin', (req, res) => {
+  // Check admin key
+  if (!ADMIN_KEY || req.body.key !== ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { action, value } = req.body;
+
+  switch (action) {
+    case 'reset':
+      wCounter = 0;
+      broadcast({ type: 'updateCount', count: wCounter });
+      res.json({ success: true, count: wCounter, message: 'Counter reset to 0' });
+      break;
+
+    case 'set':
+      if (typeof value === 'number' && value >= 0) {
+        wCounter = value;
+        broadcast({ type: 'updateCount', count: wCounter });
+        res.json({ success: true, count: wCounter, message: `Counter set to ${value}` });
+      } else {
+        res.status(400).json({ error: 'Invalid value' });
+      }
+      break;
+
+    case 'pause':
+      isPaused = Boolean(value);
+      broadcast({ type: 'paused', paused: isPaused });
+      res.json({ success: true, paused: isPaused, message: isPaused ? 'Counter paused' : 'Counter resumed' });
+      break;
+
+    case 'celebrate':
+      broadcast({ type: 'celebration' });
+      res.json({ success: true, message: 'Celebration triggered!' });
+      break;
+
+    default:
+      res.status(400).json({ error: 'Invalid action' });
+  }
+});
+
+// Update W counter from chat messages
+wss.on('connection', (ws) => {
+  ws.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data);
+      
+      // Count 'W' messages
+      if (msg.type === 'msg' && !isPaused) {
+        const text = msg.text || '';
+        const wCount = (text.match(/w/gi) || []).length;
+        if (wCount > 0) {
+          wCounter += wCount;
+          broadcast({ type: 'updateCount', count: wCounter });
+        }
+      }
+    } catch (err) {
+      // Ignore parsing errors
+    }
+  });
+});
+
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  if (ADMIN_KEY) {
+    console.log(`Admin panel: http://localhost:${PORT}/admin.html?key=${ADMIN_KEY}`);
+  } else {
+    console.log('Warning: No ADMIN_KEY set. Admin panel disabled.');
+  }
 });

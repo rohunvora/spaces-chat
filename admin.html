@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W Counter Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .count-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .controls {
+            display: grid;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-reset {
+            background: #ef4444;
+        }
+
+        .btn-reset:hover {
+            background: #dc2626;
+        }
+
+        .btn-pause {
+            background: #f59e0b;
+        }
+
+        .btn-pause:hover {
+            background: #d97706;
+        }
+
+        .btn-resume {
+            background: #10b981;
+        }
+
+        .btn-resume:hover {
+            background: #059669;
+        }
+
+        .btn-celebrate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-celebrate:hover {
+            background: linear-gradient(135deg, #5a67d8 0%, #6b3aa0 100%);
+        }
+
+        .manual-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .manual-controls button {
+            padding: 12px 24px;
+            font-size: 24px;
+            min-width: 60px;
+        }
+
+        .manual-controls input {
+            width: 100px;
+            padding: 12foolpx;
+            font-size: 18px;
+            text-align: center;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #10b981;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .paused .status-indicator {
+            background: #f59e0b;
+            animation: none;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #059669;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .unauthorized {
+            text-align: center;
+            color: white;
+        }
+
+        .unauthorized h1 {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .count-display {
+                font-size: 36px;
+            }
+            
+            button {
+                padding: 16px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="unauthorized" class="unauthorized" style="display: none;">
+        <h1>🔒</h1>
+        <h2>Unauthorized</h2>
+        <p>Invalid admin key</p>
+    </div>
+
+    <div id="adminPanel" class="container" style="display: none;">
+        <h1>W Counter Admin</h1>
+        
+        <div class="status">
+            <span class="status-indicator"></span>
+            <span id="statusText">Connected</span>
+        </div>
+
+        <div id="message"></div>
+
+        <div class="count-display" id="currentCount">0</div>
+
+        <div class="controls">
+            <button class="btn-pause" id="pauseBtn" onclick="togglePause()">
+                ⏸️ Pause Counter
+            </button>
+
+            <button class="btn-celebrate" onclick="triggerCelebration()">
+                🎉 Trigger Celebration
+            </button>
+
+            <div class="manual-controls">
+                <button onclick="adjustCount(-1)">−</button>
+                <input type="number" id="countInput" value="0" onchange="setCount(this.value)">
+                <button onclick="adjustCount(1)">+</button>
+            </div>
+
+            <button class="btn-reset" onclick="resetCounter()">
+                🗑️ Reset to Zero
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Check auth on load
+        const urlParams = new URLSearchParams(window.location.search);
+        const key = urlParams.get('key');
+        
+        if (!key) {
+            document.getElementById('unauthorized').style.display = 'block';
+        } else {
+            // Store key for API calls
+            localStorage.setItem('adminKey', key);
+            document.getElementById('adminPanel').style.display = 'block';
+            initAdmin();
+        }
+
+        let isPaused = false;
+        let currentCount = 0;
+        let ws = null;
+
+        function initAdmin() {
+            // Connect to WebSocket for real-time updates
+            connectWebSocket();
+            
+            // Get initial count
+            fetchCurrentCount();
+            
+            // Update count every 2 seconds as backup
+            setInterval(fetchCurrentCount, 2000);
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}`);
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.count !== undefined) {
+                    currentCount = data.count;
+                    document.getElementById('currentCount').textContent = currentCount;
+                    document.getElementById('countInput').value = currentCount;
+                }
+                if (data.paused !== undefined) {
+                    isPaused = data.paused;
+                    updatePauseButton();
+                }
+            };
+
+            ws.onclose = () => {
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        async function fetchCurrentCount() {
+            try {
+                const response = await fetch('/api/count');
+                const data = await response.json();
+                currentCount = data.count;
+                document.getElementById('currentCount').textContent = currentCount;
+                document.getElementById('countInput').value = currentCount;
+            } catch (err) {
+                console.error('Failed to fetch count:', err);
+            }
+        }
+
+        async function adminAction(action, value = null) {
+            const key = localStorage.getItem('adminKey');
+            
+            try {
+                const body = { action, key };
+                if (value !== null) body.value = value;
+                
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        showMessage('Invalid admin key', 'error');
+                        setTimeout(() => {
+                            document.getElementById('unauthorized').style.display = 'block';
+                            document.getElementById('adminPanel').style.display = 'none';
+                        }, 1000);
+                    }
+                    throw new Error('Action failed');
+                }
+
+                const data = await response.json();
+                
+                if (data.count !== undefined) {
+                    currentCount = data.count;
+                    document.getElementById('currentCount').textContent = currentCount;
+                    document.getElementById('countInput').value = currentCount;
+                }
+
+                showMessage(data.message || 'Success!', 'success');
+                
+                // Send update through WebSocket
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'admin', action, value }));
+                }
+                
+                return data;
+            } catch (err) {
+                showMessage('Action failed', 'error');
+                console.error('Admin action failed:', err);
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.className = type;
+            messageEl.textContent = text;
+            setTimeout(() => {
+                messageEl.textContent = '';
+                messageEl.className = '';
+            }, 3000);
+        }
+
+        function resetCounter() {
+            if (confirm('Are you sure you want to reset the counter to 0?')) {
+                adminAction('reset');
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            adminAction('pause', isPaused);
+            updatePauseButton();
+        }
+
+        function updatePauseButton() {
+            const btn = document.getElementById('pauseBtn');
+            const container = document.querySelector('.container');
+            
+            if (isPaused) {
+                btn.textContent = '▶️ Resume Counter';
+                btn.className = 'btn-resume';
+                container.classList.add('paused');
+                document.getElementById('statusText').textContent = 'Paused';
+            } else {
+                btn.textContent = '⏸️ Pause Counter';
+                btn.className = 'btn-pause';
+                container.classList.remove('paused');
+                document.getElementById('statusText').textContent = 'Connected';
+            }
+        }
+
+        function triggerCelebration() {
+            adminAction('celebrate');
+        }
+
+        function adjustCount(delta) {
+            const newCount = currentCount + delta;
+            if (newCount >= 0) {
+                adminAction('set', newCount);
+            }
+        }
+
+        function setCount(value) {
+            const newCount = parseInt(value);
+            if (!isNaN(newCount) && newCount >= 0) {
+                adminAction('set', newCount);
+            }
+        }
+    </script>
+</body>
+</html>
