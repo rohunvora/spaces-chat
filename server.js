@@ -281,6 +281,15 @@ wss.on('connection', (ws) => {
           
           client.lastSentAt = now;
           
+          // Count W's in the message (if W counter is not paused)
+          if (!isPaused) {
+            const wCount = (text.match(/w/gi) || []).length;
+            if (wCount > 0) {
+              wCounter += wCount;
+              broadcast({ type: 'updateCount', count: wCounter });
+            }
+          }
+          
           const message = {
             type: 'msg',
             id: `${now}-${messageIdCounter++}`,
@@ -490,27 +499,6 @@ app.post('/api/admin', (req, res) => {
     default:
       res.status(400).json({ error: 'Invalid action' });
   }
-});
-
-// Update W counter from chat messages
-wss.on('connection', (ws) => {
-  ws.on('message', (data) => {
-    try {
-      const msg = JSON.parse(data);
-      
-      // Count 'W' messages
-      if (msg.type === 'msg' && !isPaused) {
-        const text = msg.text || '';
-        const wCount = (text.match(/w/gi) || []).length;
-        if (wCount > 0) {
-          wCounter += wCount;
-          broadcast({ type: 'updateCount', count: wCounter });
-        }
-      }
-    } catch (err) {
-      // Ignore parsing errors
-    }
-  });
 });
 
 server.listen(PORT, () => {

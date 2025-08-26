@@ -364,12 +364,41 @@
 
     <div id="adminPanel" class="container" style="display: none;">
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('counter')">W Counter</button>
-            <button class="tab" onclick="switchTab('moderation')">Moderation</button>
+            <button class="tab active" onclick="switchTab('moderation', this)">Moderation</button>
+            <button class="tab" onclick="switchTab('counter', this)">W Counter</button>
+        </div>
+
+        <!-- Moderation Tab (Default) -->
+        <div id="moderation-tab" class="tab-content active">
+            <h2>Banned Words</h2>
+            
+            <div id="modMessage"></div>
+
+            <div class="word-input-group">
+                <input type="text" id="newWord" class="word-input" placeholder="Add a word to ban..." onkeypress="if(event.key==='Enter') addWord()">
+                <button class="btn-add" onclick="addWord()">Add Word</button>
+            </div>
+
+            <div class="word-list-container">
+                <div class="info-text">Words that will be silently filtered from chat:</div>
+                <div class="word-list" id="wordList">
+                    <!-- Words will be loaded here -->
+                </div>
+                <div class="word-count" id="wordCount">0 banned words</div>
+            </div>
+
+            <div class="bulk-edit">
+                <h3 style="margin-bottom: 10px;">Bulk Edit</h3>
+                <div class="info-text">Edit all words at once (one per line):</div>
+                <textarea id="bulkWords" placeholder="Enter words, one per line..."></textarea>
+                <button class="btn-save" onclick="saveBulkWords()" style="margin-top: 10px; width: 100%;">
+                    💾 Save All Changes
+                </button>
+            </div>
         </div>
 
         <!-- W Counter Tab -->
-        <div id="counter-tab" class="tab-content active">
+        <div id="counter-tab" class="tab-content">
             <h2>W Counter Controls</h2>
             
             <div class="status">
@@ -398,35 +427,6 @@
 
                 <button class="btn-reset" onclick="resetCounter()">
                     🗑️ Reset to Zero
-                </button>
-            </div>
-        </div>
-
-        <!-- Moderation Tab -->
-        <div id="moderation-tab" class="tab-content">
-            <h2>Banned Words</h2>
-            
-            <div id="modMessage"></div>
-
-            <div class="word-input-group">
-                <input type="text" id="newWord" class="word-input" placeholder="Add a word to ban..." onkeypress="if(event.key==='Enter') addWord()">
-                <button class="btn-add" onclick="addWord()">Add Word</button>
-            </div>
-
-            <div class="word-list-container">
-                <div class="info-text">Words that will be silently filtered from chat:</div>
-                <div class="word-list" id="wordList">
-                    <!-- Words will be loaded here -->
-                </div>
-                <div class="word-count" id="wordCount">0 banned words</div>
-            </div>
-
-            <div class="bulk-edit">
-                <h3 style="margin-bottom: 10px;">Bulk Edit</h3>
-                <div class="info-text">Edit all words at once (one per line):</div>
-                <textarea id="bulkWords" placeholder="Enter words, one per line..."></textarea>
-                <button class="btn-save" onclick="saveBulkWords()" style="margin-top: 10px; width: 100%;">
-                    💾 Save All Changes
                 </button>
             </div>
         </div>
@@ -465,10 +465,15 @@
             setInterval(fetchCurrentCount, 2000);
         }
 
-        function switchTab(tab) {
+        function switchTab(tab, element) {
+            // If called from onclick, element will be passed
+            if (!element && event && event.target) {
+                element = event.target;
+            }
+            
             // Update tab buttons
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
+            if (element) element.classList.add('active');
             
             // Update tab content
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
