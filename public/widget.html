@@ -12,7 +12,7 @@
     }
     
     body {
-      background: transparent;
+      background: #00ff00; /* Default to green for chromakey */
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       overflow: hidden;
     }
@@ -21,7 +21,7 @@
       padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 12px;
       height: 100vh;
       overflow: hidden;
     }
@@ -37,23 +37,28 @@
     }
     
     .message {
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       color: white;
-      padding: 8px 12px;
-      border-radius: 8px;
-      max-width: 400px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      max-width: 500px;
       animation: fadeSlideIn 300ms linear;
       word-wrap: break-word;
+      font-size: 18px; /* Increased from default */
+      line-height: 1.4;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
     
     .message-name {
-      font-weight: 600;
+      font-weight: 700;
       color: #10b981;
       margin-right: 8px;
+      font-size: 19px;
     }
     
     .message-text {
       display: inline;
+      font-size: 18px;
     }
     
     @keyframes fadeSlideIn {
@@ -69,15 +74,20 @@
     
     /* Chromakey-friendly background options */
     body.chromakey-green {
-      background: #00ff00;
+      background: #00ff00 !important; /* Pure green for chroma key */
     }
     
     body.chromakey-blue {
-      background: #0000ff;
+      background: #0000ff !important; /* Pure blue for chroma key */
     }
     
     body.chromakey-magenta {
-      background: #ff00ff;
+      background: #ff00ff !important; /* Pure magenta for chroma key */
+    }
+    
+    /* No chromakey - transparent background */
+    body.chromakey-none {
+      background: transparent !important;
     }
   </style>
 </head>
