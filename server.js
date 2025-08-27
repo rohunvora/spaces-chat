@@ -15,10 +15,19 @@ const wss = new WebSocket.Server({
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || null;
+const MAINTENANCE_MODE = process.env.MAINTENANCE_MODE === 'true';
 
 // W counter state
 let wCounter = 0;
 let isPaused = false;
+
+// Maintenance mode middleware - MUST BE FIRST
+app.use((req, res, next) => {
+  if (MAINTENANCE_MODE && !req.path.includes('maintenance.html')) {
+    return res.redirect('/maintenance.html');
+  }
+  next();
+});
 
 // Force HTTPS in production
 app.use((req, res, next) => {
@@ -173,6 +182,12 @@ function broadcastUserCount() {
 }
 
 wss.on('connection', (ws) => {
+  // Reject WebSocket connections during maintenance
+  if (MAINTENANCE_MODE) {
+    ws.close(1001, 'Maintenance mode');
+    return;
+  }
+
   const client = {
     ws,
     name: 'Guest',
