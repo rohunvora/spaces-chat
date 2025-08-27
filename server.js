@@ -76,7 +76,7 @@ let messageIdCounter = 1;
 
 const state = {
   pinned: '',
-  slow: 0,
+  slow: 5,  // Default 5 second slow mode
   emojiOnly: false
 };
 
