@@ -1,3 +1,8 @@
+<div align="center">
+  <img src="/.github/social-preview.png" alt="spaces-chat" width="800" />
+  <p><strong>Real-time chat overlay for Twitter Spaces and livestreams with OBS integration.</strong></p>
+</div>
+
 # Spaces Chat
 
 **Real-time chat overlay for Twitter Spaces and livestreams with OBS integration.**
