@@ -9,6 +9,36 @@
 
 Turn any livestream into an interactive experience with zero-friction chat that viewers can join instantly. Built specifically for streamers who need a lightweight, OBS-ready chat widget that works seamlessly with browser sources and chroma key effects.
 
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Viewers["👥 Viewers"]
+        Web[Browser]
+        Mobile[Mobile]
+    end
+    
+    subgraph Server["⚡ Server"]
+        WS[WebSocket]
+        DB[(SQLite)]
+        Host[Host Controls]
+    end
+    
+    subgraph OBS["🎬 Streamer"]
+        Widget[Widget Overlay]
+    end
+    
+    Web <-->|"real-time"| WS
+    Mobile <-->|"real-time"| WS
+    WS <--> DB
+    Host --> WS
+    WS --> Widget
+    
+    style Viewers fill:#09090b,stroke:#ec4899,color:#fff
+    style Server fill:#09090b,stroke:#8b5cf6,color:#fff
+    style OBS fill:#09090b,stroke:#14b8a6,color:#fff
+```
+
 ## What it does
 
 - **OBS-ready widget** - Drop into any streaming setup as a browser source with chroma key support
